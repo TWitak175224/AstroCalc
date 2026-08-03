@@ -150,7 +150,7 @@ class EphemerisEngine:
         """
         return self.polish_names.get(body_id, swe.get_planet_name(body_id))
 
-    def calculate_rise_set(self, date_utc: datetime.datetime, lat: float, lon: float, body_id: int = swe.SUN):
+    def calculate_rise_set(self, date_utc: datetime.datetime, lat: float, lon: float, height:float, body_id: int = swe.SUN):
         """
         Oblicza czas wschodu i zachodu dla danego obiektu, biorąc pod uwagę
         standardową refrakcję atmosferyczną.
@@ -158,7 +158,7 @@ class EphemerisEngine:
         # 1. Konwersja czasu na Julian Day (UTC)
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
-        geopos = (float(lon), float(lat), 0.0)
+        geopos = (float(lon), float(lat), height)
         # 2. Wywołanie obliczeń - przekazujemy lon, lat, 0.0 bezpośrednio jako float!
         try:
             # Wschód
@@ -195,6 +195,69 @@ class EphemerisEngine:
             'zachod': jd_set,
             "gorowanie_jd": jd_transit
         }
+
+def generuj_raport(pozycja, rok, miesiac, dzien, days):
+    engine = EphemerisEngine(ephe_path='eph_data')
+    sprawdz_typ_efemeryd('eph_data')
+    # 3. Parametry geograficzne (Olsztyn / Warszawa)
+    LONGITUDE,LATITUDE,ELEV = pozycja  # N
+    planets = {swe.SUN, swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.NEPTUNE, swe.URANUS}
+    for planet in planets:
+        print(f"           {engine.get_polish_name(planet)}")
+        print("   DATA      WSCHÓD   GÓROWANIE  ZACHÓD")
+        for j in range(1, days + 1):
+            try:
+                flaga_wschod = 0
+                flaga_zachod = 0
+                # 2. Definiujemy datę i czas w naszej strefie czasowej (np. Warszawa)
+                warsaw_tz = ZoneInfo("Europe/Warsaw")
+                local_time = datetime.datetime(rok, miesiac, j, 0, 0, 0, tzinfo=warsaw_tz)
+
+                # Zamieniamy na czas uniwersalny (UTC), którym posługuje się silnik
+                utc_time = local_time.astimezone(datetime.timezone.utc)
+
+                wyniki = engine.calculate_rise_set(
+                    date_utc=utc_time,
+                    lat=LATITUDE,
+                    lon=LONGITUDE,
+                    height=ELEV,
+                    body_id=planet
+                )
+
+                # 5. Wyniki wracają w UTC, przeliczamy z powrotem na strefę polską do wyświetlenia
+                try:
+                    wschod_lokalny = _jd_to_datetime(wyniki['wschod']).astimezone(warsaw_tz).strftime('%H:%M:%S')
+                except:
+                    flaga_wschod = 1
+                    wschod_lokalny = "**:**:**"
+
+                gorowanie_lokalny = _jd_to_datetime(wyniki['gorowanie_jd']).astimezone(warsaw_tz).strftime(
+                    '%H:%M:%S')
+                try:
+                    zachod_lokalny = _jd_to_datetime(wyniki['zachod']).astimezone(warsaw_tz).strftime('%H:%M:%S')
+                except:
+                    flaga_zachod = 1
+                    zachod_lokalny = "**:**:**"
+
+                if flaga_wschod == 1 | flaga_zachod == 1:
+                    wysokosc = oblicz_wysokosc(wyniki['gorowanie_jd'], planet, LONGITUDE, LATITUDE, engine.flags)[2]
+                    if wysokosc < 0:
+                        flaga_gorowanie = '\\/'
+                    elif wysokosc > 0:
+                        flaga_gorowanie = '/\\'
+                    else:
+                        flaga_gorowanie = '---'
+                        print(
+                            f"{local_time.strftime('%Y-%m-%d')}  {wschod_lokalny}  {gorowanie_lokalny}  {zachod_lokalny}  {flaga_gorowanie}")
+                else:
+                    print(
+                        f"{local_time.strftime('%Y-%m-%d')}  {wschod_lokalny}  {gorowanie_lokalny}  {zachod_lokalny}")
+            except:
+                break
+
+
+
+
 
 
 if __name__ == "__main__":
