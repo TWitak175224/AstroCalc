@@ -16,7 +16,7 @@ def oblicz_wysokosc(jd_utc, body_id, lon, lat, flags):
     :param flags: Flagi konfiguracyjne silnika (np. swe.FLG_SWIEPH)
     :return: (azymut, wysokosc_rzeczywista, wysokosc_pozorna)
     """
-    # KROK 1: Pobieramy współrzędne równikowe (Rektascensja, Deklinacja, Odległość)
+    # KROK 1: Pobieramy współrzędne równikowe (Rektascensja, Deklinacja, Odległość).
     # Dodajemy flagę swe.FLG_EQUATORIAL, by wymusić odpowiedni układ odniesienia
     flagi_rownikowe = flags | swe.FLG_EQUATORIAL
     coords, ret_flag = swe.calc_ut(jd_utc, body_id, flagi_rownikowe)
@@ -133,7 +133,7 @@ class EphemerisEngine:
             swe.VENUS: "WENUS",
             swe.MARS: "MARS",
             swe.JUPITER: "JOWISZ",
-            swe.SATURN: "SSATURN",
+            swe.SATURN: "SATURN",
             swe.URANUS: "URAN",
             swe.NEPTUNE: "NEPTUN",
             swe.PLUTO: "PLUTON",
@@ -196,66 +196,134 @@ class EphemerisEngine:
             "gorowanie_jd": jd_transit
         }
 
+
+def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
+    """
+    Wykorzystuje metodę bisekcji do znalezienia momentu,
+    gdy Słońce przecina wysokość -18 stopni (świt/zmierzch astronomiczny).
+    """
+    KACIK_CIEMNOSCI = -18.0
+    TOLERANCJA = 1.0 / 1440.0  # Dokładność do 1 minuty w ułamku dnia juliańskiego
+
+    # Określamy przybliżony czas połnocy (pół dnia przed i po górowaniu)
+    jd_polnoc_przed = jd_gorowanie - 0.5
+    jd_polnoc_po = jd_gorowanie + 0.5
+
+    def wysokosc_slonca(jd):
+        # Pobieramy wysokość rzeczywistą z Twojej funkcji (indeks 1)
+        return oblicz_wysokosc(jd, swe.SUN, lon, lat, flags)[1]
+
+    # ---- OBLICZANIE ŚWITU ----
+    if wysokosc_slonca(jd_polnoc_przed) > KACIK_CIEMNOSCI:
+        swit_str = "Białe Noce"  # Słońce w ogóle nie schodzi na -18 stopni (np. latem na północy)
+    else:
+        a, b = jd_polnoc_przed, jd_gorowanie
+        while (b - a) > TOLERANCJA:
+            mid = (a + b) / 2.0
+            if wysokosc_slonca(mid) < KACIK_CIEMNOSCI:
+                a = mid  # Słońce jest niżej, więc przesuwamy się bliżej górowania
+            else:
+                b = mid  # Słońce wyżej, cofamy się do północy
+        swit_str = _jd_to_datetime((a + b) / 2.0).astimezone(tz_info).strftime('%H.%M')
+
+    # ---- OBLICZANIE ZMIERZCHU ----
+    if wysokosc_slonca(jd_polnoc_po) > KACIK_CIEMNOSCI:
+        zmierzch_str = "Białe Noce"
+    else:
+        a, b = jd_gorowanie, jd_polnoc_po
+        while (b - a) > TOLERANCJA:
+            mid = (a + b) / 2.0
+            if wysokosc_slonca(mid) > KACIK_CIEMNOSCI:
+                a = mid  # Słońce wciąż za wysoko, idziemy w stronę północy
+            else:
+                b = mid
+        zmierzch_str = _jd_to_datetime((a + b) / 2.0).astimezone(tz_info).strftime('%H.%M')
+
+    return swit_str, zmierzch_str
+
 def generuj_raport(pozycja, rok, miesiac, dzien, days):
     engine = EphemerisEngine(ephe_path='eph_data')
     sprawdz_typ_efemeryd('eph_data')
-    # 3. Parametry geograficzne (Olsztyn / Warszawa)
-    LONGITUDE,LATITUDE,ELEV = pozycja  # N
-    planets = {swe.SUN, swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.NEPTUNE, swe.URANUS}
-    for planet in planets:
-        print(f"           {engine.get_polish_name(planet)}")
-        print("   DATA      WSCHÓD   GÓROWANIE  ZACHÓD")
-        for j in range(1, days + 1):
+
+    LONGITUDE, LATITUDE, ELEV = pozycja
+    warsaw_tz = ZoneInfo("Europe/Warsaw")
+
+    # 1. Przygotowanie nagłówków dla DWÓCH osobnych tabel
+    naglowki_slonce = ["Dzień", "Słońce Wsch", "Słońce Gór", "Słońce Zach", "Księżyc Wsch", "Księżyc Gór",
+                       "Księżyc Zach"]
+
+    planety = [swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO]
+    naglowki_planety = ["Dzień", "Świt astr.", "Zmierzch astr."]
+    for p in planety:
+        # Skracamy nagłówki do formatu z Piwnic
+        nazwa = engine.get_polish_name(p).capitalize()
+        naglowki_planety.append(f"{nazwa} (Wsch-Zach)")
+
+    try:
+        start_date_local = datetime.datetime(rok, miesiac, dzien, 0, 0, 0, tzinfo=warsaw_tz)
+    except ValueError as e:
+        print(f"Błąd daty: {e}")
+        return [], [], [], []
+
+    wyniki_slonce = []
+    wyniki_planety = []
+
+    for j in range(days):
+        current_local = start_date_local + datetime.timedelta(days=j)
+        data_str = current_local.strftime('%d.%m.%Y')
+        utc_time = current_local.astimezone(datetime.timezone.utc)
+
+        # ==========================================
+        # TABELA 1: SŁOŃCE I KSIĘŻYC (Codziennie)
+        # ==========================================
+        wiersz_s = [data_str]
+        for cialo in [swe.SUN, swe.MOON]:
             try:
-                flaga_wschod = 0
-                flaga_zachod = 0
-                # 2. Definiujemy datę i czas w naszej strefie czasowej (np. Warszawa)
-                warsaw_tz = ZoneInfo("Europe/Warsaw")
-                local_time = datetime.datetime(rok, miesiac, j, 0, 0, 0, tzinfo=warsaw_tz)
+                wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, cialo)
+                # Formatowanie HH.MM zamiast HH:MM:SS !
+                wsch = _jd_to_datetime(wyniki['wschod']).astimezone(warsaw_tz).strftime('%H.%M') if wyniki[
+                    'wschod'] else "--.--"
+                gor = _jd_to_datetime(wyniki['gorowanie_jd']).astimezone(warsaw_tz).strftime('%H.%M') if wyniki[
+                    'gorowanie_jd'] else "--.--"
+                zach = _jd_to_datetime(wyniki['zachod']).astimezone(warsaw_tz).strftime('%H.%M') if wyniki[
+                    'zachod'] else "--.--"
 
-                # Zamieniamy na czas uniwersalny (UTC), którym posługuje się silnik
-                utc_time = local_time.astimezone(datetime.timezone.utc)
+                wiersz_s.extend([wsch, gor, zach])
+            except Exception:
+                wiersz_s.extend(["Błąd", "Błąd", "Błąd"])
 
-                wyniki = engine.calculate_rise_set(
-                    date_utc=utc_time,
-                    lat=LATITUDE,
-                    lon=LONGITUDE,
-                    height=ELEV,
-                    body_id=planet
-                )
+        wyniki_slonce.append(tuple(wiersz_s))
 
-                # 5. Wyniki wracają w UTC, przeliczamy z powrotem na strefę polską do wyświetlenia
-                try:
-                    wschod_lokalny = _jd_to_datetime(wyniki['wschod']).astimezone(warsaw_tz).strftime('%H:%M:%S')
-                except:
-                    flaga_wschod = 1
-                    wschod_lokalny = "**:**:**"
+        # ==========================================
+        # TABELA 2: ZJAWISKA PLANETARNE
+        # ==========================================
+        # Żeby policzyć świt, musimy znać czas górowania Słońca danego dnia
+        wyniki_s_tmp = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, swe.SUN)
+        jd_gor = wyniki_s_tmp['gorowanie_jd']
 
-                gorowanie_lokalny = _jd_to_datetime(wyniki['gorowanie_jd']).astimezone(warsaw_tz).strftime(
-                    '%H:%M:%S')
-                try:
-                    zachod_lokalny = _jd_to_datetime(wyniki['zachod']).astimezone(warsaw_tz).strftime('%H:%M:%S')
-                except:
-                    flaga_zachod = 1
-                    zachod_lokalny = "**:**:**"
+        if jd_gor is not None:
+            swit, zmierzch = oblicz_swit_zmierzch(jd_gor, LONGITUDE, LATITUDE, engine.flags, warsaw_tz)
+        else:
+            swit, zmierzch = "--.--", "--.--"
 
-                if flaga_wschod == 1 | flaga_zachod == 1:
-                    wysokosc = oblicz_wysokosc(wyniki['gorowanie_jd'], planet, LONGITUDE, LATITUDE, engine.flags)[2]
-                    if wysokosc < 0:
-                        flaga_gorowanie = '\\/'
-                    elif wysokosc > 0:
-                        flaga_gorowanie = '/\\'
-                    else:
-                        flaga_gorowanie = '---'
-                        print(
-                            f"{local_time.strftime('%Y-%m-%d')}  {wschod_lokalny}  {gorowanie_lokalny}  {zachod_lokalny}  {flaga_gorowanie}")
-                else:
-                    print(
-                        f"{local_time.strftime('%Y-%m-%d')}  {wschod_lokalny}  {gorowanie_lokalny}  {zachod_lokalny}")
-            except:
-                break
+        wiersz_p = [data_str, swit, zmierzch]
 
+        for p in planety:
+            try:
+                wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, p)
+                wsch = _jd_to_datetime(wyniki['wschod']).astimezone(warsaw_tz).strftime('%H.%M') if wyniki[
+                    'wschod'] else "--.--"
+                zach = _jd_to_datetime(wyniki['zachod']).astimezone(warsaw_tz).strftime('%H.%M') if wyniki[
+                    'zachod'] else "--.--"
 
+                wiersz_p.append(f"{wsch} - {zach}")
+            except Exception:
+                wiersz_p.append("Błąd")
+
+        wyniki_planety.append(tuple(wiersz_p))
+
+    # Zwracamy dokładnie 4 elementy, których oczekuje main.py
+    return wyniki_slonce, naglowki_slonce, wyniki_planety, naglowki_planety
 
 
 
@@ -302,7 +370,7 @@ if __name__ == "__main__":
                 except:
                     flaga_zachod = 1
                     zachod_lokalny = "**:**:**"
-                if flaga_wschod == 1 | flaga_zachod == 1:
+                if flaga_wschod == 1 or flaga_zachod == 1:
                     wysokosc = oblicz_wysokosc(wyniki['gorowanie_jd'], planet, LONGITUDE, LATITUDE, engine.flags)[2]
                     if wysokosc < 0:
                         flaga_gorowanie = '\\/'
