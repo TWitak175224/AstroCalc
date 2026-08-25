@@ -23,7 +23,8 @@ class GlownaAplikacja:
             config['miesiac'],
             config['dzien'],
             config['dni_do_analizy'],
-            config['timezone']
+            config['timezone'],
+            config['krok_planety'] 
         )
 
         self.pokaz_panel_wynikow(wyniki_s, naglowki_s, wyniki_p, naglowki_p)

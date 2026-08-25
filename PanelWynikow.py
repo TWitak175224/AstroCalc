@@ -57,7 +57,7 @@ class PanelWynikow(tk.Frame):
 
         for nazwa in naglowki:
             tabela.heading(nazwa, text=nazwa)
-            szerokosc = 70 if nazwa == "Dzień" else 130
+            szerokosc = 70 if nazwa == "Dzień" else 150
             tabela.column(nazwa, width=szerokosc, anchor=tk.CENTER, stretch=tk.NO)
 
         for wiersz in dane:

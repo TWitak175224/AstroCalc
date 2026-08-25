@@ -1,7 +1,7 @@
 import datetime
 import os
-from typing import Any
 from zoneinfo import ZoneInfo
+
 import swisseph as swe
 
 
@@ -134,21 +134,74 @@ class EphemerisEngine:
 
         return {'wschod': jd_rise, 'zachod': jd_set, "gorowanie_jd": jd_transit}
 
+    def pobierz_odleglosc(self, date_utc: datetime.datetime, body_id: int):
+        """Pobiera odległość ciała od Ziemi w Jednostkach Astronomicznych (AU)."""
+        decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
+        jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
 
-def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str):
+        # Funkcja calc_ut zwraca krotkę, gdzie indeks 2 to zawsze odległość w AU
+        coords, _ = swe.calc_ut(jd_utc, body_id, self.flags)
+        return coords[2]
+
+    def oblicz_faze_ksiezyca(self, date_utc: datetime.datetime):
+        """
+        Zwraca procentowe oświetlenie tarczy Księżyca (0.0 - 100.0).
+        """
+        decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
+        jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
+
+        try:
+            # pheno_ut zwraca krotkę z dokładnie 20 wartościami
+            wynik = swe.pheno_ut(jd_utc, swe.MOON, self.flags)
+
+            faza_ulamek = wynik[1]  # Indeks 1 to ułamek oświetlonej tarczy (0.0 do 1.0)
+            return faza_ulamek * 100.0
+        except swe.Error as e:
+            print(f"Błąd silnika przy obliczaniu fazy: {e}")
+            return 0.0
+
+
+def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe):
+    """
+    Formatuje czasy wschodu, górowania i zachodu.
+    Wykrywa obiekty okołobiegunowe i nadaje znaczniki /\\ lub \\/.
+    """
+    wsch_jd = wyniki['wschod']
+    gor_jd = wyniki['gorowanie_jd']
+    zach_jd = wyniki['zachod']
+
+    gor_str = _jd_to_datetime(gor_jd).astimezone(strefa_tz).strftime('%H.%M') if gor_jd else "--.--"
+    wsch_str = _jd_to_datetime(wsch_jd).astimezone(strefa_tz).strftime('%H.%M') if wsch_jd else None
+    zach_str = _jd_to_datetime(zach_jd).astimezone(strefa_tz).strftime('%H.%M') if zach_jd else None
+
+    # Detekcja braku wschodu lub zachodu
+    if wsch_str is None or zach_str is None:
+        jd_test = gor_jd if gor_jd else jd_bazowe
+        _, _, alt = oblicz_wysokosc(jd_test, cialo, lon, lat, flags)
+        znacznik = "/\\" if alt > 0 else "\\/"
+
+        wsch_str = wsch_str if wsch_str else znacznik
+        zach_str = zach_str if zach_str else znacznik
+
+    return wsch_str, gor_str, zach_str
+
+
+def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety):
     engine = EphemerisEngine(ephe_path='eph_data')
     sprawdz_typ_efemeryd('eph_data')
 
     LONGITUDE, LATITUDE, ELEV = pozycja
     lokalna_strefa_tz = ZoneInfo(strefa_str)
 
-    naglowki_slonce = ["Dzień", "Słońce Wsch.", "Słońce Gór.", "Słońce Zach.", "Księżyc Wsch.", "Księżyc Gór.",
-                       "Księżyc Zach."]
+
+    naglowki_slonce = ["Dzień", "Słońce Wsch.", "Słońce Gór.", "Słońce Zach.", "Odl. Słońca [AU]", "Księżyc Wsch.",
+                       "Księżyc Gór.", "Księżyc Zach.", "Odl. Księżyca [km]", "Faza [%]"]
+
     planety = [swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO]
     naglowki_planety = ["Dzień", "Świt astr.", "Zmierzch astr."]
     for p in planety:
         nazwa = engine.get_polish_name(p).capitalize()
-        naglowki_planety.append(f"{nazwa} Wsch-Zach")
+        naglowki_planety.append(f"{nazwa} W-G-Z")
 
     try:
         start_date_local = datetime.datetime(rok, miesiac, dzien, 0, 0, 0, tzinfo=lokalna_strefa_tz)
@@ -163,46 +216,65 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str):
         current_local = start_date_local + datetime.timedelta(days=j)
         data_str = current_local.strftime('%d.%m.%Y')
         utc_time = current_local.astimezone(datetime.timezone.utc)
+        jd_midnight = swe.julday(utc_time.year, utc_time.month, utc_time.day, 12.0)
 
         # TABELA 1: Słońce i Księżyc
         wiersz_s = [data_str]
+        jd_gor_ksiezyca = None
+
         for cialo in [swe.SUN, swe.MOON]:
             try:
                 wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, cialo)
-                wsch = _jd_to_datetime(wyniki['wschod']).astimezone(lokalna_strefa_tz).strftime('%H.%M') if wyniki[
-                    'wschod'] else "--.--"
-                gor = _jd_to_datetime(wyniki['gorowanie_jd']).astimezone(lokalna_strefa_tz).strftime('%H.%M') if wyniki[
-                    'gorowanie_jd'] else "--.--"
-                zach = _jd_to_datetime(wyniki['zachod']).astimezone(lokalna_strefa_tz).strftime('%H.%M') if wyniki[
-                    'zachod'] else "--.--"
-                wiersz_s.extend([wsch, gor, zach])
+                w, g, z = odkoduj_zjawisko(wyniki, cialo, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz,
+                                           jd_midnight)
+                wiersz_s.extend([w, g, z])
+
+                # --- NOWE: Doklejanie odległości ---
+                odl_au = engine.pobierz_odleglosc(utc_time, cialo)
+                if cialo == swe.SUN:
+                    wiersz_s.append(f"{odl_au:.4f}")  # Słońce zostawiamy w AU
+                else:
+                    odl_km = odl_au * 149597870.7  # Przelicznik AU na km
+                    wiersz_s.append(f"{odl_km:,.0f}".replace(',', ' '))  # Formatowanie Księżyca (np. 384 400)
+
+                    jd_gor_ksiezyca = wyniki['gorowanie_jd']
             except Exception:
-                wiersz_s.extend(["Błąd", "Błąd", "Błąd"])
+                wiersz_s.extend(["Błąd", "Błąd", "Błąd", "Błąd"])
+        # --- OBLICZANIE FAZY DLA MOMENTU GÓROWANIA ---
+        if jd_gor_ksiezyca is not None:
+            # Jeśli Księżyc góruje, konwertujemy JD na obiekt datetime
+            czas_do_fazy = _jd_to_datetime(jd_gor_ksiezyca)
+        else:
+            # Awaryjnie (dzień bez górowania) używamy północy czasu lokalnego
+            czas_do_fazy = utc_time
+
+        faza_proc = engine.oblicz_faze_ksiezyca(czas_do_fazy)
+        wiersz_s.append(f"{faza_proc:.1f} %")
 
         wyniki_slonce.append(tuple(wiersz_s))
 
         # TABELA 2: Planety i Świt/Zmierzch
-        wyniki_s_tmp = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, swe.SUN)
-        jd_gor = wyniki_s_tmp['gorowanie_jd']
+        # Znak '%' sprawdza, czy dany dzień dzieli się bez reszty przez nasz krok
+        if j % krok_planety == 0:
+            wyniki_s_tmp = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, swe.SUN)
+            jd_gor = wyniki_s_tmp['gorowanie_jd']
 
-        if jd_gor is not None:
-            swit, zmierzch = oblicz_swit_zmierzch(jd_gor, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz)
-        else:
-            swit, zmierzch = "--.--", "--.--"
+            if jd_gor is not None:
+                swit, zmierzch = oblicz_swit_zmierzch(jd_gor, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz)
+            else:
+                swit, zmierzch = "--.--", "--.--"
 
-        wiersz_p = [data_str, swit, zmierzch]
+            wiersz_p = [data_str, swit, zmierzch]
 
-        for p in planety:
-            try:
-                wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, p)
-                wsch = _jd_to_datetime(wyniki['wschod']).astimezone(lokalna_strefa_tz).strftime('%H.%M') if wyniki[
-                    'wschod'] else "--.--"
-                zach = _jd_to_datetime(wyniki['zachod']).astimezone(lokalna_strefa_tz).strftime('%H.%M') if wyniki[
-                    'zachod'] else "--.--"
-                wiersz_p.append(f"{wsch}  {zach}")
-            except Exception:
-                wiersz_p.append("Błąd")
+            for p in planety:
+                try:
+                    wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, p)
+                    w, g, z = odkoduj_zjawisko(wyniki, p, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz,
+                                               jd_midnight)
+                    wiersz_p.append(f"{w}  {g}  {z}")
+                except Exception:
+                    wiersz_p.append("Błąd")
 
-        wyniki_planety.append(tuple(wiersz_p))
+            wyniki_planety.append(tuple(wiersz_p))
 
     return wyniki_slonce, naglowki_slonce, wyniki_planety, naglowki_planety
