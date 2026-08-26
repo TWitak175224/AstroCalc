@@ -6,8 +6,8 @@ import oblicznie_planet
 class GlownaAplikacja:
     def __init__(self, root):
         self.root = root
-        self.root.title("Kalkulator Astronomiczny (SI)")
-        self.root.geometry("1100x600")
+        self.root.title("Kalkulator Astronomiczny")
+        self.root.geometry("1100x700")
 
         self.panel_startowy = StartPanel(self.root, self.odbierz_dane_z_gui)
         self.panel_wynikow = PanelWynikow(self.root, self.wroc_do_startu)
@@ -17,21 +17,17 @@ class GlownaAplikacja:
     def odbierz_dane_z_gui(self, config):
         geopos = (config['lon_dd'], config['lat_dd'], config['elev'])
 
-        wyniki_s, naglowki_s, wyniki_p, naglowki_p = oblicznie_planet.generuj_raport(
-            geopos,
-            config['rok'],
-            config['miesiac'],
-            config['dzien'],
-            config['dni_do_analizy'],
-            config['timezone'],
-            config['krok_planety'] 
+        w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso = oblicznie_planet.generuj_raport(
+            geopos, config['rok'], config['miesiac'], config['dzien'],
+            config['dni_do_analizy'], config['timezone'], config['krok_planety'],
+            config['obiekty_dso'] # <-- Lecą nasze emki!
         )
 
-        self.pokaz_panel_wynikow(wyniki_s, naglowki_s, wyniki_p, naglowki_p)
+        self.pokaz_panel_wynikow(w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso)
 
-    def pokaz_panel_wynikow(self, w_s, n_s, w_p, n_p):
+    def pokaz_panel_wynikow(self, w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso):
         self.panel_startowy.pack_forget()
-        self.panel_wynikow.zaladuj_dane(w_s, n_s, w_p, n_p)
+        self.panel_wynikow.zaladuj_dane(w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso)
         self.panel_wynikow.pack(fill=tk.BOTH, expand=True)
 
     def wroc_do_startu(self):
