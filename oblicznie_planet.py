@@ -247,7 +247,47 @@ class EphemerisEngine:
             jd += step
         return best_jd
 
-    def znajdz_kalendarium_zjawisk(self, utc_start, dni, pozycja, tz):
+    def _doprecyzuj_kat_planetarny(self, jd_start, jd_end, body1, body2, docelowy_kat):
+        best_jd = jd_start
+        min_diff = 999.0
+        jd = jd_start
+        step = 1.0 / 1440.0
+        while jd <= jd_end:
+            pos1, _ = swe.calc_ut(jd, body1, self.flags)
+            pos2, _ = swe.calc_ut(jd, body2, self.flags)
+            diff = abs((pos1[0] - pos2[0]) % 360.0)
+
+            if docelowy_kat == 0:
+                if diff > 180: diff = 360.0 - diff
+            else:
+                diff = abs(diff - 180.0)
+
+            if diff < min_diff:
+                min_diff = diff
+                best_jd = jd
+            jd += step
+        return best_jd
+
+    def _doprecyzuj_elongacje(self, jd_start, jd_end, body):
+        best_jd = jd_start
+        max_elong = -1.0
+        best_kierunek = 0
+        jd = jd_start
+        step = 1.0 / 1440.0
+        while jd <= jd_end:
+            pos_p, _ = swe.calc_ut(jd, body, self.flags)
+            pos_s, _ = swe.calc_ut(jd, swe.SUN, self.flags)
+            diff = (pos_p[0] - pos_s[0]) % 360.0
+            elong = diff if diff <= 180 else 360.0 - diff
+
+            if elong > max_elong:
+                max_elong = elong
+                best_jd = jd
+                best_kierunek = diff
+            jd += step
+        return best_jd, max_elong, best_kierunek
+
+    def znajdz_kalendarium_zjawisk(self, utc_start, dni, pozycja, tz, okienko_koniunkcji=5.0):
         zjawiska_jd = []
         jd_base = swe.julday(utc_start.year, utc_start.month, utc_start.day, utc_start.hour)
         jd_end = jd_base + dni
@@ -264,6 +304,12 @@ class EphemerisEngine:
             if sec >= 60: sec = 59
             dt_utc = datetime.datetime(y, m, d, h, minute, sec, tzinfo=datetime.timezone.utc)
             return dt_utc.astimezone(tz).strftime('%H:%M')
+
+        def przekroczono_0(prv, cur):
+            return (prv > 300 and cur < 60) or (prv < 60 and cur > 300)
+
+        def przekroczono_180(prv, cur):
+            return (prv < 180 and cur >= 180) or (prv > 180 and cur <= 180)
 
         # --- 1. GLOBALNE ZAĆMIENIA KSIĘŻYCA ---
         jd_szukaj = jd_base
@@ -307,6 +353,16 @@ class EphemerisEngine:
         prev_sun_lon = None
         hist_D_moon, hist_D_sun, hist_Dec = [], [], []
 
+        planety_zewn = [swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO]
+        planety_wewn = [swe.MERCURY, swe.VENUS]
+        prev_lon_planet = {}
+        hist_elong = {swe.MERCURY: [], swe.VENUS: []}
+
+        # Wzajemne koniunkcje (Księżyc + wszystkie planety)
+        wszystkie_ciala = [swe.MOON, swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE,
+                           swe.PLUTO]
+        prev_pair_diff = {}
+
         jd = jd_base
         while jd <= jd_end:
             sun_pos, _ = swe.calc_ut(jd, swe.SUN, self.flags)
@@ -337,7 +393,6 @@ class EphemerisEngine:
                     t_now = self._doprecyzuj_faze(jd - step, jd, 0)
                     zjawiska_jd.append((t_now, "Nów Księżyca", ""))
 
-                    # --- SKANER ZAĆMIEŃ SŁOŃCA ---
                     t_scan = t_now - 0.125
                     t_end_scan = t_now + 0.125
                     step_scan = 1.0 / 1440.0
@@ -356,8 +411,6 @@ class EphemerisEngine:
                                 res_how = swe.sol_eclipse_how(t_scan, geopos, self.flags)
 
                             ret_how, attr_how = res_how[0], res_how[1]
-
-
                             faza = attr_how[2] * 100
 
                             if faza > 0.1:
@@ -395,9 +448,8 @@ class EphemerisEngine:
 
                         pocz_str = formatuj_czas(t_start)
 
-                        # Wstawienie Zachodzi zaćmione, jeśli Słońce zachodzi w trakcie zaćmienia
                         if faza_koniec > 1.0:
-                            kon_str = "Zachodzi zaćmione"
+                            kon_str = "--:--"
                         else:
                             kon_str = formatuj_czas(t_end)
 
@@ -440,6 +492,77 @@ class EphemerisEngine:
                 hist_D_sun.pop(0)
                 hist_Dec.pop(0)
 
+            # --- ZJAWISKA PLANETARNE ZE SŁOŃCEM ---
+            for p in planety_zewn + planety_wewn:
+                pos_p, _ = swe.calc_ut(jd, p, self.flags)
+                diff_lon = (pos_p[0] - sun_lon) % 360.0
+
+                if p in prev_lon_planet:
+                    prev = prev_lon_planet[p]
+                    nazwa_p = self.get_polish_name(p).capitalize()
+
+                    if przekroczono_0(prev, diff_lon):
+                        t_dok = self._doprecyzuj_kat_planetarny(jd - step, jd, p, swe.SUN, 0)
+
+                        if p in planety_wewn:
+                            pos_p_dok, _ = swe.calc_ut(t_dok, p, self.flags)
+                            pos_s_dok, _ = swe.calc_ut(t_dok, swe.SUN, self.flags)
+                            # Jeśli planeta jest bliżej Ziemi niż Słońce -> Koniunkcja dolna
+                            if pos_p_dok[2] < pos_s_dok[2]:
+                                zjawiska_jd.append((t_dok, f"Koniunkcja dolna: {nazwa_p}", "ze Słońcem"))
+                            else:
+                                zjawiska_jd.append((t_dok, f"Koniunkcja górna: {nazwa_p}", "ze Słońcem"))
+                        else:
+                            zjawiska_jd.append((t_dok, f"Koniunkcja: {nazwa_p}", "ze Słońcem"))
+
+                    if p in planety_zewn and przekroczono_180(prev, diff_lon):
+                        t_dok = self._doprecyzuj_kat_planetarny(jd - step, jd, p, swe.SUN, 180)
+                        zjawiska_jd.append((t_dok, f"Opozycja: {nazwa_p}", ""))
+
+                prev_lon_planet[p] = diff_lon
+
+            # --- MAKSYMALNE ELONGACJE ---
+            for p in planety_wewn:
+                elong = diff_lon if prev_lon_planet[p] <= 180 else 360.0 - prev_lon_planet[p]
+                hist_elong[p].append((jd, elong))
+
+                if len(hist_elong[p]) == 3:
+                    e0, e1, e2 = hist_elong[p][0], hist_elong[p][1], hist_elong[p][2]
+                    if e1[1] > e0[1] and e1[1] > e2[1]:
+                        t_dok, max_val, typ_w_z = self._doprecyzuj_elongacje(e0[0], e2[0], p)
+                        nazwa_p = self.get_polish_name(p).capitalize()
+                        kierunek = "Wschodnia (wieczorna)" if typ_w_z < 180 else "Zachodnia (poranna)"
+                        zjawiska_jd.append((t_dok, f"Maks. elongacja: {nazwa_p}", f"Kąt: {max_val:.1f}° | {kierunek}"))
+                    hist_elong[p].pop(0)
+
+            # --- KONIUNKCJE WZAJEMNE (Planeta-Planeta i Księżyc-Planeta) ---
+            for i in range(len(wszystkie_ciala)):
+                for j in range(i + 1, len(wszystkie_ciala)):
+                    b1, b2 = wszystkie_ciala[i], wszystkie_ciala[j]
+                    para = (b1, b2)
+
+                    pos1, _ = swe.calc_ut(jd, b1, self.flags)
+                    pos2, _ = swe.calc_ut(jd, b2, self.flags)
+                    diff_para = (pos1[0] - pos2[0]) % 360.0
+
+                    if para in prev_pair_diff:
+                        prev = prev_pair_diff[para]
+                        if przekroczono_0(prev, diff_para):
+                            t_dok = self._doprecyzuj_kat_planetarny(jd - step, jd, b1, b2, 0)
+                            p1_dok, _ = swe.calc_ut(t_dok, b1, self.flags)
+                            p2_dok, _ = swe.calc_ut(t_dok, b2, self.flags)
+
+                            # Separacja kątowa na niebie to po prostu różnica szerokości ekliptycznej w momencie koniunkcji
+                            sep = abs(p1_dok[1] - p2_dok[1])
+
+                            # FILTR OKIENKA UŻYTKOWNIKA
+                            if sep <= okienko_koniunkcji:
+                                n1 = self.get_polish_name(b1).capitalize()
+                                n2 = self.get_polish_name(b2).capitalize()
+                                zjawiska_jd.append((t_dok, f"Zbliżenie: {n1} i {n2}", f"Separacja: {sep:.2f}°"))
+
+                    prev_pair_diff[para] = diff_para
+
             prev_E = E
             jd += step
 
@@ -466,7 +589,7 @@ def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe):
     return wsch_str, gor_str, zach_str
 
 
-def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety, obiekty_dso):
+def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety, obiekty_dso, okienko_koniunkcji=5.0):
     engine = EphemerisEngine(ephe_path='eph_data')
     sprawdz_typ_efemeryd('eph_data')
 
@@ -592,7 +715,9 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
     wyniki_kalendarium = []
 
     utc_start_date = start_date_local.astimezone(datetime.timezone.utc)
-    surowe_zjawiska = engine.znajdz_kalendarium_zjawisk(utc_start_date, days, pozycja, lokalna_strefa_tz)
+
+    surowe_zjawiska = engine.znajdz_kalendarium_zjawisk(utc_start_date, days, pozycja, lokalna_strefa_tz,
+                                                        okienko_koniunkcji)
 
     for jd, nazwa, detal in sorted(surowe_zjawiska, key=lambda x: x[0]):
         dt_local = _jd_to_datetime(jd).astimezone(lokalna_strefa_tz)

@@ -41,6 +41,11 @@ class StartPanel(tk.Frame):
 
         self.entry_date.pack(fill=tk.X, padx=5, pady=2)
 
+        tk.Label(ramka_czasu, text="Maks. separacja koniunkcji [°]:").pack(anchor=tk.W, padx=5, pady=(5, 0))
+        self.entry_okienko = tk.Entry(ramka_czasu)
+        self.entry_okienko.insert(0, "5.0")  # Domyślne 5 stopni
+        self.entry_okienko.pack(fill=tk.X, padx=5, pady=2)
+
         tk.Label(ramka_czasu, text="Liczba dni do wyliczenia:").pack(anchor=tk.W, padx=5, pady=(5, 0))
         self.entry_days = tk.Entry(ramka_czasu)
         self.entry_days.insert(0, "7")
