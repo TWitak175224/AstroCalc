@@ -1,170 +1,317 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
+import csv
+import os
+from datetime import datetime, timedelta
 
-# Słownik do tłumaczenia numerów miesięcy na piękne nazwy
-MIESIACE_PL = {
-    "01": "Styczeń", "02": "Luty", "03": "Marzec",
-    "04": "Kwiecień", "05": "Maj", "06": "Czerwiec",
-    "07": "Lipiec", "08": "Sierpień", "09": "Wrzesień",
-    "10": "Październik", "11": "Listopad", "12": "Grudzień"
-}
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
 
 
 class PanelWynikow(tk.Frame):
     def __init__(self, parent, on_back_callback):
         super().__init__(parent)
         self.on_back_callback = on_back_callback
+
+        self.w_s = self.n_s = []
+        self.w_p = self.n_p = []
+        self.w_k = self.n_k = []
+        self.w_dso = self.n_dso = []
+        self.config_dane = None
+
+        try:
+            pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+            pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
+            self.font_regular = 'Arial'
+            self.font_bold = 'Arial-Bold'
+        except:
+            self.font_regular = 'Helvetica'
+            self.font_bold = 'Helvetica-Bold'
+
         self.setup_ui()
 
     def setup_ui(self):
-        lbl = tk.Label(self, text="Kalendarz Astronomiczny (Efemerydy)", font=("Helvetica", 14, "bold"))
-        lbl.pack(pady=10)
+        # Dolny panel przycisków
+        panel_btn = tk.Frame(self)
+        panel_btn.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
 
-        # Kontener nadrzędny, w którym będziemy dynamicznie rysować zakładki
-        self.kontener_notatnikow = tk.Frame(self)
-        self.kontener_notatnikow.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        btn_wroc = tk.Button(panel_btn, text="< Wróć do ustawień", command=self.on_back_callback,
+                             font=("Helvetica", 10))
+        btn_wroc.pack(side=tk.LEFT)
 
-        btn_back = tk.Button(self, text="← Powrót do mapy", command=self.on_back_callback, font=("Helvetica", 10))
-        btn_back.pack(pady=15)
+        btn_eksport_pdf = tk.Button(panel_btn, text="Eksportuj do PDF", command=self.eksportuj_pdf, bg="#f44336",
+                                    fg="white", font=("Helvetica", 10, "bold"))
+        btn_eksport_pdf.pack(side=tk.RIGHT, padx=(10, 0))
 
-    def utworz_tabele(self, parent_frame):
-        ramka_tabeli = tk.Frame(parent_frame)
-        ramka_tabeli.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        btn_eksport_csv = tk.Button(panel_btn, text="Eksportuj do CSV", command=self.eksportuj_csv, bg="#2196F3",
+                                    fg="white", font=("Helvetica", 10, "bold"))
+        btn_eksport_csv.pack(side=tk.RIGHT)
 
-        tabela = ttk.Treeview(ramka_tabeli, show="headings", height=15)
+        # Główny kontener na zakładki miesięcy i lat na górze
+        self.main_notebook = ttk.Notebook(self)
+        self.main_notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        scroll_y = ttk.Scrollbar(ramka_tabeli, orient=tk.VERTICAL, command=tabela.yview)
-        scroll_x = ttk.Scrollbar(ramka_tabeli, orient=tk.HORIZONTAL, command=tabela.xview)
+    def stworz_tabele(self, parent):
+        scroll_y = ttk.Scrollbar(parent, orient=tk.VERTICAL)
+        scroll_x = ttk.Scrollbar(parent, orient=tk.HORIZONTAL)
 
-        tabela.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+        tree = ttk.Treeview(parent, yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
 
+        scroll_y.config(command=tree.yview)
         scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+
+        scroll_x.config(command=tree.xview)
         scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
-        tabela.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        return tabela
+        tree.pack(fill=tk.BOTH, expand=True)
+        return tree
 
-    def zaladuj_dane(self, dane_slonce, naglowki_slonce, dane_planety, naglowki_planety, dane_kalendarium,
-                     naglowki_kalendarium, dane_dso, naglowki_dso):
-        # 1. Czyszczenie poprzedniego widoku
-        for widget in self.kontener_notatnikow.winfo_children():
-            widget.destroy()
+    def wypelnij_tabele(self, tree, naglowki, dane):
+        tree.delete(*tree.get_children())
+        tree["columns"] = naglowki
+        tree["show"] = "headings"
 
-        # 2. GRUPOWANIE DANYCH
-        drzewo = {}
-
-        for w in dane_slonce:
-            _, mc, rok = w[0].split('.')
-            if rok not in drzewo: drzewo[rok] = {}
-            if mc not in drzewo[rok]: drzewo[rok][mc] = {'s': [], 'p': [], 'k': [], 'd': []}
-            drzewo[rok][mc]['s'].append(w)
-
-        for w in dane_planety:
-            _, mc, rok = w[0].split('.')
-            if rok not in drzewo: drzewo[rok] = {}
-            if mc not in drzewo[rok]: drzewo[rok][mc] = {'s': [], 'p': [], 'k': [], 'd': []}
-            drzewo[rok][mc]['p'].append(w)
-
-        for w in dane_dso:
-            _, mc, rok = w[0].split('.')
-            if rok not in drzewo: drzewo[rok] = {}
-            if mc not in drzewo[rok]: drzewo[rok][mc] = {'s': [], 'p': [], 'k': [], 'd': []}
-            drzewo[rok][mc]['d'].append(w)
-
-        for w in dane_kalendarium:
-            rok = w[0][:4]
-            mc = w[0][5:7]
-            if rok not in drzewo: drzewo[rok] = {}
-            if mc not in drzewo[rok]: drzewo[rok][mc] = {'s': [], 'p': [], 'k': [], 'd': []}
-            drzewo[rok][mc]['k'].append(w)
-
-        # 3. BUDOWANIE ZAKŁADEK (Z INTELIGENTNYM UKRYWANIEM)
-        czy_wiele_lat = len(drzewo) > 1
-
-        # LOGIKA DLA LAT
-        if czy_wiele_lat:
-            notatnik_lat = ttk.Notebook(self.kontener_notatnikow)
-            notatnik_lat.pack(fill=tk.BOTH, expand=True)
-        else:
-            # Jeśli jest tylko jeden rok, tworzymy zwykłą, niewidoczną ramkę
-            ramka_na_lata = tk.Frame(self.kontener_notatnikow)
-            ramka_na_lata.pack(fill=tk.BOTH, expand=True)
-
-        for rok in sorted(drzewo.keys()):
-            if czy_wiele_lat:
-                zakladka_roku = tk.Frame(notatnik_lat)
-                notatnik_lat.add(zakladka_roku, text=f"Rok {rok}")
-                rodzic_dla_miesiecy = zakladka_roku
-            else:
-                rodzic_dla_miesiecy = ramka_na_lata
-
-            # LOGIKA DLA MIESIĘCY
-            czy_wiele_miesiecy = len(drzewo[rok]) > 1
-
-            if czy_wiele_miesiecy:
-                notatnik_miesiecy = ttk.Notebook(rodzic_dla_miesiecy)
-                notatnik_miesiecy.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-            else:
-                # Jeśli jest tylko jeden miesiąc, pomijamy zakładkę
-                ramka_na_miesiac = tk.Frame(rodzic_dla_miesiecy)
-                ramka_na_miesiac.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-            for mc in sorted(drzewo[rok].keys()):
-                nazwa_mc = MIESIACE_PL.get(mc, mc)
-
-                if czy_wiele_miesiecy:
-                    zakladka_mc = tk.Frame(notatnik_miesiecy)
-                    notatnik_miesiecy.add(zakladka_mc, text=nazwa_mc)
-                    rodzic_dla_kategorii = zakladka_mc
-                else:
-                    rodzic_dla_kategorii = ramka_na_miesiac
-
-                # LOGIKA DLA TABEL (TE ZAKŁADKI POJAWIAJĄ SIĘ ZAWSZE)
-                notatnik_kategorii = ttk.Notebook(rodzic_dla_kategorii)
-                notatnik_kategorii.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-                if drzewo[rok][mc]['s']:
-                    z_slonce = tk.Frame(notatnik_kategorii)
-                    notatnik_kategorii.add(z_slonce, text="Słońce i Księżyc")
-                    tab_slonce = self.utworz_tabele(z_slonce)
-                    self.wypelnij_tabele(tab_slonce, drzewo[rok][mc]['s'], naglowki_slonce)
-
-                if drzewo[rok][mc]['p']:
-                    z_planety = tk.Frame(notatnik_kategorii)
-                    notatnik_kategorii.add(z_planety, text="Zjawiska Planetarne")
-                    tab_planety = self.utworz_tabele(z_planety)
-                    self.wypelnij_tabele(tab_planety, drzewo[rok][mc]['p'], naglowki_planety)
-
-                if drzewo[rok][mc]['d']:
-                    z_dso = tk.Frame(notatnik_kategorii)
-                    notatnik_kategorii.add(z_dso, text="Obiekty Messiera (DSO)")
-                    tab_dso = self.utworz_tabele(z_dso)
-                    self.wypelnij_tabele(tab_dso, drzewo[rok][mc]['d'], naglowki_dso)
-
-                if drzewo[rok][mc]['k']:
-                    z_kalen = tk.Frame(notatnik_kategorii)
-                    notatnik_kategorii.add(z_kalen, text="Kalendarium Zjawisk")
-                    tab_kalen = self.utworz_tabele(z_kalen)
-                    self.wypelnij_tabele(tab_kalen, drzewo[rok][mc]['k'], naglowki_kalendarium)
-
-    def wypelnij_tabele(self, tabela, dane, naglowki):
-        for wiersz in tabela.get_children():
-            tabela.delete(wiersz)
-
-        tabela["columns"] = naglowki
-
-        for nazwa in naglowki:
-            tabela.heading(nazwa, text=nazwa)
-            if nazwa == "Dzień":
-                szerokosc = 80
-            elif nazwa in ["Zjawisko Astronomiczne", "Data i Czas"]:
-                szerokosc = 200
-            elif nazwa == "Dodatkowe Parametry":
-                szerokosc = 160
-            else:
-                szerokosc = 130
-
-            tabela.column(nazwa, width=szerokosc, anchor=tk.CENTER, stretch=tk.NO)
+        for naglowek in naglowki:
+            tree.heading(naglowek, text=naglowek)
+            tree.column(naglowek, width=130, anchor=tk.CENTER)
 
         for wiersz in dane:
-            tabela.insert("", tk.END, values=wiersz)
+            tree.insert("", tk.END, values=wiersz)
+
+    def _parsuj_rok_miesiac(self, data_str, format_typu):
+        try:
+            if format_typu == 'k':
+                return int(data_str[:4]), int(data_str[5:7])
+            else:
+                czesci = data_str.split('.')
+                return int(czesci[2]), int(czesci[1])
+        except:
+            return 0, 0
+
+    def zaladuj_dane(self, w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso, config=None):
+        self.w_s, self.n_s = w_s, n_s
+        self.w_p, self.n_p = w_p, n_p
+        self.w_k, self.n_k = w_k, n_k
+        self.w_dso, self.n_dso = w_dso, n_dso
+        self.config_dane = config
+
+        # Czyszczenie starych zakładek
+        for tab in self.main_notebook.tabs():
+            self.main_notebook.forget(tab)
+
+        miesiace_nazwy = ["", "STYCZEŃ", "LUTY", "MARZEC", "KWIECIEŃ", "MAJ", "CZERWIEC",
+                          "LIPIEC", "SIERPIEŃ", "WRZESIEŃ", "PAŹDZIERNIK", "LISTOPAD", "GRUDZIEŃ"]
+
+        # Zbieramy unikalne pary (rok, miesiąc) ze wszystkich tabel
+        unikalne_m_y = set()
+        for w in self.w_s: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 's'))
+        for w in self.w_p: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'p'))
+        for w in self.w_dso: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'd'))
+        for w in self.w_k: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'k'))
+
+        if (0, 0) in unikalne_m_y: unikalne_m_y.remove((0, 0))
+        miesiace_posortowane = sorted(list(unikalne_m_y))
+
+        if not miesiace_posortowane:
+            miesiace_posortowane = [(datetime.now().year, datetime.now().month)]
+
+        # Tworzymy zakładkę na górze dla każdego miesiąca/roku
+        for rok, miesiac in miesiace_posortowane:
+            nazwa_zakladki = f"{miesiace_nazwy[miesiac]} {rok}"
+
+            tab_mc = ttk.Frame(self.main_notebook)
+            self.main_notebook.add(tab_mc, text=nazwa_zakladki)
+
+            # Podzakładki dla kategorii wewnątrz danego miesiąca
+            sub_notebook = ttk.Notebook(tab_mc)
+            sub_notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+            # 1. Słońce i Księżyc
+            f_slonce = ttk.Frame(sub_notebook)
+            sub_notebook.add(f_slonce, text="Słońce i Księżyc")
+            tree_s = self.stworz_tabele(f_slonce)
+            w_s_mc = [w for w in self.w_s if self._parsuj_rok_miesiac(w[0], 's') == (rok, miesiac)]
+            self.wypelnij_tabele(tree_s, self.n_s, w_s_mc)
+
+            # 2. Planety
+            f_planety = ttk.Frame(sub_notebook)
+            sub_notebook.add(f_planety, text="Planety")
+            tree_p = self.stworz_tabele(f_planety)
+            w_p_mc = [w for w in self.w_p if self._parsuj_rok_miesiac(w[0], 'p') == (rok, miesiac)]
+            self.wypelnij_tabele(tree_p, self.n_p, w_p_mc)
+
+            # 3. Kalendarium Zjawisk
+            f_kal = ttk.Frame(sub_notebook)
+            sub_notebook.add(f_kal, text="Kalendarium Zjawisk")
+            tree_k = self.stworz_tabele(f_kal)
+            w_k_mc = [w for w in self.w_k if self._parsuj_rok_miesiac(w[0], 'k') == (rok, miesiac)]
+            self.wypelnij_tabele(tree_k, self.n_k, w_k_mc)
+
+            # 4. Katalog DSO
+            f_dso = ttk.Frame(sub_notebook)
+            sub_notebook.add(f_dso, text="Katalog DSO")
+            tree_d = self.stworz_tabele(f_dso)
+            w_dso_mc = [w for w in self.w_dso if self._parsuj_rok_miesiac(w[0], 'd') == (rok, miesiac)]
+            self.wypelnij_tabele(tree_d, self.n_dso, w_dso_mc)
+
+    def eksportuj_pdf(self):
+        plik = filedialog.asksaveasfilename(
+            title="Zapisz jako PDF",
+            defaultextension=".pdf",
+            filetypes=[("Pliki PDF", "*.pdf")],
+            initialfile="Raport_Astronomiczny.pdf"
+        )
+        if not plik:
+            return
+
+        try:
+            doc = SimpleDocTemplate(plik, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20,
+                                    bottomMargin=20)
+            elementy = []
+
+            styl_tytulu = ParagraphStyle(
+                name='TytulStrony', fontName=self.font_bold, fontSize=24, alignment=1, spaceAfter=15,
+                textColor=colors.HexColor('#2c3e50')
+            )
+            styl_info = ParagraphStyle(
+                name='InfoStrony', fontName=self.font_regular, fontSize=12, alignment=1, spaceAfter=8,
+                textColor=colors.HexColor('#34495e')
+            )
+
+            styl_miesiaca = ParagraphStyle(
+                name='Miesiac', fontName=self.font_bold, fontSize=16, alignment=1, spaceAfter=15, spaceBefore=10,
+                textColor=colors.HexColor('#2c3e50')
+            )
+            styl_sekcji = ParagraphStyle(
+                name='Sekcja', fontName=self.font_bold, fontSize=12, spaceAfter=8, spaceBefore=12
+            )
+
+            # --- STRONA TYTUŁOWA ---
+            if self.config_dane:
+                start_dt = datetime(self.config_dane['rok'], self.config_dane['miesiac'], self.config_dane['dzien'])
+                end_dt = start_dt + timedelta(days=self.config_dane['dni_do_analizy'] - 1)
+                okres_str = f"na okres: od {start_dt.strftime('%Y-%m-%d')} do {end_dt.strftime('%Y-%m-%d')} ({self.config_dane['dni_do_analizy']} dni)"
+                miejsce_str = f"dla miejsca: Szerokość: {self.config_dane['lat_dd']}° | Długość: {self.config_dane['lon_dd']}° | Wysokość: {self.config_dane['elev']} m n.p.m."
+                strefa_str = f"Strefa czasowa: {self.config_dane['timezone']}"
+            else:
+                okres_str = "na okres: Brak danych"
+                miejsce_str = "dla miejsca: Brak danych"
+                strefa_str = ""
+
+            tytul_elements = [
+                Paragraph("KALENDARZ ASTRONOMICZNY", styl_tytulu),
+                Spacer(1, 15),
+                Paragraph(okres_str, styl_info),
+                Spacer(1, 6),
+                Paragraph(miejsce_str, styl_info),
+            ]
+            if strefa_str:
+                tytul_elements.extend([Spacer(1, 6), Paragraph(strefa_str, styl_info)])
+
+            t_tytul = Table([[tytul_elements]], colWidths=[800], rowHeights=[530])
+            t_tytul.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ]))
+            elementy.append(t_tytul)
+
+            elementy.append(PageBreak())
+
+            # --- KOLEJNE STRONY (MIESIĄCE) ---
+            def dodaj_sekcje(tytul, naglowki, wiersze):
+                if not wiersze: return
+                elementy.append(Paragraph(tytul, styl_sekcji))
+
+                dane_tabeli = [naglowki] + [list(w) for w in wiersze]
+                rozmiar_fontu = 7 if len(naglowki) > 8 else 9
+
+                t = Table(dane_tabeli)
+                styl_tabeli = TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), self.font_bold),
+                    ('FONTSIZE', (0, 0), (-1, 0), rozmiar_fontu),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                    ('FONTNAME', (0, 1), (-1, -1), self.font_regular),
+                    ('FONTSIZE', (0, 1), (-1, -1), rozmiar_fontu),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ])
+
+                for i in range(1, len(dane_tabeli)):
+                    bg_color = colors.HexColor('#f2f2f2') if i % 2 == 0 else colors.white
+                    styl_tabeli.add('BACKGROUND', (0, i), (-1, i), bg_color)
+
+                t.setStyle(styl_tabeli)
+                elementy.append(t)
+
+            miesiace_nazwy = ["", "STYCZEŃ", "LUTY", "MARZEC", "KWIECIEŃ", "MAJ", "CZERWIEC",
+                              "LIPIEC", "SIERPIEŃ", "WRZESIEŃ", "PAŹDZIERNIK", "LISTOPAD", "GRUDZIEŃ"]
+
+            unikalne_m_y = set()
+            for w in self.w_s: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 's'))
+            for w in self.w_p: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'p'))
+            for w in self.w_dso: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'd'))
+            for w in self.w_k: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'k'))
+
+            if (0, 0) in unikalne_m_y: unikalne_m_y.remove((0, 0))
+            miesiace_posortowane = sorted(list(unikalne_m_y))
+
+            for idx, (rok, miesiac) in enumerate(miesiace_posortowane):
+                if idx > 0:
+                    elementy.append(PageBreak())
+
+                tytul_mc = f"------------ {miesiace_nazwy[miesiac]} {rok} ------------"
+                elementy.append(Paragraph(tytul_mc, styl_miesiaca))
+
+                w_s_mc = [w for w in self.w_s if self._parsuj_rok_miesiac(w[0], 's') == (rok, miesiac)]
+                w_p_mc = [w for w in self.w_p if self._parsuj_rok_miesiac(w[0], 'p') == (rok, miesiac)]
+                w_dso_mc = [w for w in self.w_dso if self._parsuj_rok_miesiac(w[0], 'd') == (rok, miesiac)]
+                w_k_mc = [w for w in self.w_k if self._parsuj_rok_miesiac(w[0], 'k') == (rok, miesiac)]
+
+                dodaj_sekcje("Słońce oraz Księżyc", self.n_s, w_s_mc)
+                dodaj_sekcje("Efemerydy Planetarne", self.n_p, w_p_mc)
+                dodaj_sekcje("Katalog Obiektów Messiera", self.n_dso, w_dso_mc)
+                dodaj_sekcje("Szczegółowe Kalendarium Zjawisk", self.n_k, w_k_mc)
+
+            doc.build(elementy)
+            messagebox.showinfo("Sukces", "Dokument PDF został wygenerowany pomyślnie!")
+
+        except Exception as e:
+            messagebox.showerror("Błąd", f"Wystąpił błąd podczas generowania PDF:\n{e}")
+
+    def eksportuj_csv(self):
+        plik_bazowy = filedialog.asksaveasfilename(
+            title="Zapisz raporty jako",
+            defaultextension=".csv",
+            filetypes=[("Pliki CSV", "*.csv")],
+            initialfile="Raport_Astronomiczny.csv"
+        )
+        if not plik_bazowy:
+            return
+
+        rdzen, rozszerzenie = os.path.splitext(plik_bazowy)
+        dane_do_zapisu = [
+            ("_Slonce_i_Ksiezyc", self.n_s, self.w_s),
+            ("_Planety", self.n_p, self.w_p),
+            ("_Kalendarium", self.n_k, self.w_k),
+            ("_DSO", self.n_dso, self.w_dso)
+        ]
+
+        try:
+            zapisane_pliki = 0
+            for sufiks, naglowki, wiersze in dane_do_zapisu:
+                if not wiersze: continue
+                sciezka = f"{rdzen}{sufiks}{rozszerzenie}"
+                with open(sciezka, mode='w', newline='', encoding='utf-8-sig') as f:
+                    writer = csv.writer(f, delimiter=';')
+                    writer.writerow(naglowki)
+                    writer.writerows(wiersze)
+                zapisane_pliki += 1
+            messagebox.showinfo("Sukces", f"Zapisano {zapisane_pliki} plików CSV!")
+        except Exception as e:
+            messagebox.showerror("Błąd zapisu", f"Wystąpił błąd:\n{e}")
