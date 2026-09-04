@@ -63,8 +63,8 @@ def _jd_to_datetime(jd: float) -> datetime.datetime:
 
 
 def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
-    KACIK_CIEMNOSCI = -18.0
-    TOLERANCJA = 1.0 / 1440.0
+    kat_nocy_astr = -18.0
+    tolerancja = 1.0 / 1440.0
 
     jd_polnoc_przed = jd_gorowanie - 0.5
     jd_polnoc_po = jd_gorowanie + 0.5
@@ -72,25 +72,25 @@ def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
     def wysokosc_slonca(jd):
         return oblicz_wysokosc(jd, swe.SUN, lon, lat, flags)[1]
 
-    if wysokosc_slonca(jd_polnoc_przed) > KACIK_CIEMNOSCI:
+    if wysokosc_slonca(jd_polnoc_przed) > kat_nocy_astr:
         swit_str = "Białe Noce"
     else:
         a, b = jd_polnoc_przed, jd_gorowanie
-        while (b - a) > TOLERANCJA:
+        while (b - a) > tolerancja:
             mid = (a + b) / 2.0
-            if wysokosc_slonca(mid) < KACIK_CIEMNOSCI:
+            if wysokosc_slonca(mid) < kat_nocy_astr:
                 a = mid
             else:
                 b = mid
         swit_str = _jd_to_datetime((a + b) / 2.0).astimezone(tz_info).strftime('%H:%M')
 
-    if wysokosc_slonca(jd_polnoc_po) > KACIK_CIEMNOSCI:
+    if wysokosc_slonca(jd_polnoc_po) > kat_nocy_astr:
         zmierzch_str = "Białe Noce"
     else:
         a, b = jd_gorowanie, jd_polnoc_po
-        while (b - a) > TOLERANCJA:
+        while (b - a) > tolerancja:
             mid = (a + b) / 2.0
-            if wysokosc_slonca(mid) > KACIK_CIEMNOSCI:
+            if wysokosc_slonca(mid) > kat_nocy_astr:
                 a = mid
             else:
                 b = mid
@@ -113,7 +113,7 @@ class EphemerisEngine:
             swe.PLUTO: "PLUTON"
         }
 
-    def get_polish_name(self, body_id: int) -> str:
+    def get_polish_name(self, body_id: int) -> str | None:
         return self.polish_names.get(body_id, swe.get_planet_name(body_id))
 
     def calculate_rise_set(self, date_utc: datetime.datetime, lat: float, lon: float, height: float,

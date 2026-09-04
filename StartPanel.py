@@ -16,7 +16,6 @@ class StartPanel(tk.Frame):
 
         self.dso_vars = {f"M{i}": tk.BooleanVar(value=False) for i in range(1, 111)}
 
-        # Zmienne logiczne dla wyboru zjawisk
         self.zjawiska_vars = {
             "fazy_zacmienia": tk.BooleanVar(value=True),
             "pory_roje": tk.BooleanVar(value=True),
@@ -29,7 +28,7 @@ class StartPanel(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
-        panel_lewy = tk.Frame(self, width=280)
+        panel_lewy = tk.Frame(self, width=320)
         panel_lewy.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
 
         panel_prawy = tk.Frame(self)
@@ -37,9 +36,21 @@ class StartPanel(tk.Frame):
 
         tk.Label(panel_lewy, text="Parametry Obliczeń", font=("Helvetica", 12, "bold")).pack(pady=(0, 5))
 
-        # --- ZAKRES CZASOWY ---
-        ramka_czasu = tk.LabelFrame(panel_lewy, text="Zakres Czasowy")
-        ramka_czasu.pack(fill=tk.X, pady=5)
+        # --- ZAKŁADKI GŁÓWNE ---
+        self.notebook = ttk.Notebook(panel_lewy)
+        self.notebook.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        tab_efemerydy = ttk.Frame(self.notebook)
+        tab_kosmogram = ttk.Frame(self.notebook)
+
+        self.notebook.add(tab_efemerydy, text="Efemerydy")
+        self.notebook.add(tab_kosmogram, text="Kosmogram")
+
+        # ==========================================
+        # ZAKŁADKA 1: EFEMERYDY
+        # ==========================================
+        ramka_czasu = tk.LabelFrame(tab_efemerydy, text="Zakres Czasowy")
+        ramka_czasu.pack(fill=tk.X, pady=5, padx=5)
 
         tk.Label(ramka_czasu, text="Data startu (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
         self.entry_date = tk.Entry(ramka_czasu)
@@ -62,9 +73,8 @@ class StartPanel(tk.Frame):
         self.entry_krok.insert(0, "2")
         self.entry_krok.pack(fill=tk.X, padx=5, pady=(2, 5))
 
-        # --- WYBÓR ZJAWISK ---
-        ramka_filtry = tk.LabelFrame(panel_lewy, text="Wybór Zjawisk")
-        ramka_filtry.pack(fill=tk.X, pady=5)
+        ramka_filtry = tk.LabelFrame(tab_efemerydy, text="Wybór Zjawisk")
+        ramka_filtry.pack(fill=tk.X, pady=5, padx=5)
 
         tk.Checkbutton(ramka_filtry, text="Fazy Księżyca i zaćmienia",
                        variable=self.zjawiska_vars["fazy_zacmienia"]).pack(anchor=tk.W, padx=5)
@@ -76,18 +86,41 @@ class StartPanel(tk.Frame):
                        variable=self.zjawiska_vars["slonce_planety"]).pack(anchor=tk.W, padx=5)
         tk.Checkbutton(ramka_filtry, text="Elongacje i retrogradacje", variable=self.zjawiska_vars["elong_retro"]).pack(
             anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Zakrycia i Koniunkcje (UWAGA WOLNE)", variable=self.zjawiska_vars["zakrycia"]).pack(
-            anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Zakrycia i Koniunkcje (UWAGA WOLNE)",
+                       variable=self.zjawiska_vars["zakrycia"]).pack(anchor=tk.W, padx=5)
 
-        # --- DSO ---
-        ramka_dso = tk.LabelFrame(panel_lewy, text="Katalog Messiera (DSO)")
-        ramka_dso.pack(fill=tk.X, pady=5)
+        ramka_dso = tk.LabelFrame(tab_efemerydy, text="Katalog Messiera (DSO)")
+        ramka_dso.pack(fill=tk.X, pady=5, padx=5)
         tk.Button(ramka_dso, text="Wybierz obiekty DSO", command=self.otworz_okno_dso).pack(fill=tk.X, padx=5, pady=5)
         self.lbl_dso_info = tk.Label(ramka_dso, text="Wybrano obiektów: 0", fg="blue", font=("Helvetica", 9, "bold"))
         self.lbl_dso_info.pack(pady=(0, 5))
 
-        # --- LOKALIZACJA ---
-        ramka_geo = tk.LabelFrame(panel_lewy, text="Lokalizacja Obserwatora")
+        # ==========================================
+        # ZAKŁADKA 2: KOSMOGRAM
+        # ==========================================
+        ramka_urodzeniowa = tk.LabelFrame(tab_kosmogram, text="Dane Urodzeniowe")
+        ramka_urodzeniowa.pack(fill=tk.X, pady=5, padx=5)
+
+        tk.Label(ramka_urodzeniowa, text="Data (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        self.entry_urodz_data = tk.Entry(ramka_urodzeniowa)
+        self.entry_urodz_data.insert(0, "2000-01-01")
+        self.entry_urodz_data.pack(fill=tk.X, padx=5, pady=2)
+
+        tk.Label(ramka_urodzeniowa, text="Czas (GG:MM):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        self.entry_urodz_czas = tk.Entry(ramka_urodzeniowa)
+        self.entry_urodz_czas.insert(0, "12:00")
+        self.entry_urodz_czas.pack(fill=tk.X, padx=5, pady=2)
+
+        tk.Label(ramka_urodzeniowa, text="System domów:").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        self.combo_domy = ttk.Combobox(ramka_urodzeniowa,
+                                       values=["Placidus", "Koch", "Regiomontanus", "Campanus", "Równe (Equal)"])
+        self.combo_domy.set("Placidus")
+        self.combo_domy.pack(fill=tk.X, padx=5, pady=(2, 5))
+
+        # ==========================================
+        # LOKALIZACJA I PRZYCISK WSPÓLNE DLA OBU TRYBÓW
+        # ==========================================
+        ramka_geo = tk.LabelFrame(panel_lewy, text="Lokalizacja (Obserwator / Urodzenie)")
         ramka_geo.pack(fill=tk.X, pady=5)
 
         tk.Label(ramka_geo, text="Szerokość:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
@@ -106,8 +139,8 @@ class StartPanel(tk.Frame):
         self.lbl_strefa = tk.Label(ramka_geo, text="Europe/Warsaw", fg="blue", font=("Helvetica", 8, "bold"))
         self.lbl_strefa.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
 
-        tk.Button(panel_lewy, text="Generuj Efemerydy", command=self.zbierz_i_wyslij, bg="#4CAF50",
-                  fg="white", font=("Helvetica", 10, "bold")).pack(fill=tk.X, pady=10, ipady=5)
+        tk.Button(panel_lewy, text="Generuj", command=self.zbierz_i_wyslij, bg="#4CAF50",
+                  fg="white", font=("Helvetica", 12, "bold")).pack(fill=tk.X, pady=10, ipady=5)
 
         # Mapa
         self.mapa = tkintermapview.TkinterMapView(panel_prawy, corner_radius=5)
@@ -159,13 +192,13 @@ class StartPanel(tk.Frame):
     def ustaw_punkt_z_mapy(self, coords):
         lat, lon = coords
         if self.znacznik: self.znacznik.delete()
-        self.znacznik = self.mapa.set_marker(lat, lon, text="Obserwator")
+        self.znacznik = self.mapa.set_marker(lat, lon, text="Zaznaczone Miejsce")
 
-        self.entry_lat.delete(0, tk.END);
+        self.entry_lat.delete(0, tk.END)
         self.entry_lat.insert(0, str(round(lat, 5)))
-        self.entry_lon.delete(0, tk.END);
+        self.entry_lon.delete(0, tk.END)
         self.entry_lon.insert(0, str(round(lon, 5)))
-        self.entry_elev.delete(0, tk.END);
+        self.entry_elev.delete(0, tk.END)
         self.entry_elev.insert(0, "Pobieranie...")
 
         strefa_str = self.tf.timezone_at(lat=lat, lng=lon)
@@ -179,38 +212,47 @@ class StartPanel(tk.Frame):
             self.entry_elev.insert(0,
                                    str(float(r.json()['results'][0]['elevation'])) if r.status_code == 200 else "100.0")
         except:
-            self.entry_elev.delete(0, tk.END);
+            self.entry_elev.delete(0, tk.END)
             self.entry_elev.insert(0, "100.0")
 
     def zbierz_i_wyslij(self):
         try:
-            rok, miesiac, dzien = map(int, self.entry_date.get().split("-"))
+            # Określamy aktywny tryb z zakładek (0 = Efemerydy, 1 = Kosmogram)
+            aktywna_zakladka = self.notebook.index(self.notebook.select())
+            tryb = "efemerydy" if aktywna_zakladka == 0 else "kosmogram"
 
+            # Dane efemerydalne
+            rok, miesiac, dzien = map(int, self.entry_date.get().split("-"))
             try:
                 okienko_val = float(self.entry_okienko.get().replace(',', '.'))
             except ValueError:
                 okienko_val = 5.0
 
+            # Dane wspólne
             try:
                 elev = float(self.entry_elev.get())
             except ValueError:
                 elev = 100.0
 
-            krok = int(self.entry_krok.get())
-
             zjawiska_konf = {k: v.get() for k, v in self.zjawiska_vars.items()}
 
             konfiguracja = {
+                "tryb": tryb,
                 "rok": rok, "miesiac": miesiac, "dzien": dzien,
                 "dni_do_analizy": int(self.entry_days.get()),
                 "lat_dd": float(self.entry_lat.get()),
                 "lon_dd": float(self.entry_lon.get()),
                 "elev": elev,
                 "timezone": self.lbl_strefa.cget("text"),
-                "krok_planety": krok,
+                "krok_planety": int(self.entry_krok.get()),
                 "okienko_koniunkcji": okienko_val,
                 "obiekty_dso": [n for n, v in self.dso_vars.items() if v.get()],
-                "zjawiska": zjawiska_konf
+                "zjawiska": zjawiska_konf,
+
+                # Dodatkowe dane dla Kosmogramu
+                "urodz_data": self.entry_urodz_data.get(),
+                "urodz_czas": self.entry_urodz_czas.get(),
+                "sys_domow": self.combo_domy.get()
             }
 
             self.on_start_callback(konfiguracja)
