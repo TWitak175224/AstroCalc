@@ -11,13 +11,9 @@ SYSTEMY_DOMOW = {
     "Campanus": b'C', "Równe (Equal)": b'E'
 }
 
-ASPEKTY = [
-    {"nazwa": "Koniunkcja", "kat": 0, "orb": 8},
-    {"nazwa": "Sekstyl", "kat": 60, "orb": 6},
-    {"nazwa": "Kwadratura", "kat": 90, "orb": 8},
-    {"nazwa": "Trygon", "kat": 120, "orb": 8},
-    {"nazwa": "Opozycja", "kat": 180, "orb": 8}
-]
+# Grupy obiektów do dynamicznego zwężania orbów
+PUNKTY_WIRTUALNE = ["Lilith", "Węzeł Półn.", "Węzeł Połud.", "Ascendent", "Medium Coeli"]
+PLANETY_POKOLENIOWE = ["Uran", "Neptun", "Pluton"]
 
 
 def stopnie_na_znak(stopnie):
@@ -28,16 +24,31 @@ def stopnie_na_znak(stopnie):
     return f"{stopnie_calkowite:02d}°{minuty:02d}' {ZNAKI_ZODIAKU[indeks]}"
 
 
-def sprawdz_aspekt(lon1, lon2):
+def pobierz_limit_orbu(nazwa1, nazwa2, bazowy_orb):
+    # Punkty matematyczne (osie, węzły, Lilith) wymagają dużej precyzji
+    if nazwa1 in PUNKTY_WIRTUALNE or nazwa2 in PUNKTY_WIRTUALNE:
+        return min(bazowy_orb, 5.0)
+
+    # Aspekty między wolnymi planetami pokoleniowymi rzadko liczy się z pełnym orbem
+    if nazwa1 in PLANETY_POKOLENIOWE and nazwa2 in PLANETY_POKOLENIOWE:
+        return min(bazowy_orb, 4.0)
+
+    # Dla świateł (Słońce, Księżyc) i planet osobistych zostawiamy pełny orb z GUI
+    return bazowy_orb
+
+
+def sprawdz_aspekt(nazwa1, lon1, nazwa2, lon2, aspekty_konfig):
     diff = abs(lon1 - lon2)
     if diff > 180: diff = 360.0 - diff
-    for asp in ASPEKTY:
-        if abs(diff - asp["kat"]) <= asp["orb"]:
+    for asp in aspekty_konfig:
+        dopuszczalny_orb = pobierz_limit_orbu(nazwa1, nazwa2, asp["orb"])
+
+        if abs(diff - asp["kat"]) <= dopuszczalny_orb:
             dokladnosc = abs(diff - asp["kat"])
             deg = int(dokladnosc)
             minut = int((dokladnosc - deg) * 60)
-            return asp["nazwa"], f"{deg}°{minut:02d}'"
-    return None, None
+            return asp["nazwa"], f"{deg}°{minut:02d}'", dokladnosc
+    return None, None, None
 
 
 def generuj_kosmogram(config):
@@ -53,6 +64,15 @@ def generuj_kosmogram(config):
 
     decimal_hour = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0
     jd_utc = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, decimal_hour)
+
+    orby_cfg = config.get("orby", {})
+    aspekty_konfig = [
+        {"nazwa": "Koniunkcja", "kat": 0, "orb": orby_cfg.get("Koniunkcja", 8.0)},
+        {"nazwa": "Sekstyl", "kat": 60, "orb": orby_cfg.get("Sekstyl", 6.0)},
+        {"nazwa": "Kwadratura", "kat": 90, "orb": orby_cfg.get("Kwadratura", 8.0)},
+        {"nazwa": "Trygon", "kat": 120, "orb": orby_cfg.get("Trygon", 8.0)},
+        {"nazwa": "Opozycja", "kat": 180, "orb": orby_cfg.get("Opozycja", 8.0)}
+    ]
 
     planety = [swe.SUN, swe.MOON, swe.MERCURY, swe.VENUS, swe.MARS,
                swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO,
@@ -109,11 +129,11 @@ def generuj_kosmogram(config):
     for p1, p2 in itertools.combinations(dane_do_aspektow, 2):
         nazwa1, lon1 = p1
         nazwa2, lon2 = p2
-        aspekt, orb = sprawdz_aspekt(lon1, lon2)
+        aspekt, opis_orbu, dokladnosc_raw = sprawdz_aspekt(nazwa1, lon1, nazwa2, lon2, aspekty_konfig)
         if aspekt:
-            wyniki_aspekty.append((nazwa1, aspekt, nazwa2, orb))
+            wyniki_aspekty.append((nazwa1, aspekt, nazwa2, opis_orbu, dokladnosc_raw))
 
-    # Sortujemy od najściślejszego aspektu (orb najbliżej 0)
-    wyniki_aspekty.sort(key=lambda x: x[3])
+    wyniki_aspekty.sort(key=lambda x: x[4])
+    wyniki_aspekty_final = [(w[0], w[1], w[2], w[3]) for w in wyniki_aspekty]
 
-    return wyniki_planety, wyniki_domy, wyniki_aspekty
+    return wyniki_planety, wyniki_domy, wyniki_aspekty_final

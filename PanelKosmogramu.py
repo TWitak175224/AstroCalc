@@ -29,7 +29,7 @@ class PanelKosmogramu(tk.Frame):
         ramka_domy.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.tree_domy = self.stworz_tabele(ramka_domy, ["Dom / Oś", "Znak Zodiaku", "Długość [°]"])
 
-        ramka_dolna = tk.LabelFrame(self, text="Główne Aspekty (posortowane po dokładności)")
+        ramka_dolna = tk.LabelFrame(self, text="Główne Aspekty")
         ramka_dolna.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
         self.tree_aspekty = self.stworz_tabele(ramka_dolna, ["Obiekt 1", "Aspekt", "Obiekt 2", "Orb (Odchylenie)"])
 
@@ -44,6 +44,28 @@ class PanelKosmogramu(tk.Frame):
                               fg="white", font=("Helvetica", 10, "bold"))
         btn_rysuj.pack(side=tk.RIGHT, padx=10)
 
+    def sortuj_kolumne(self, tree, col, reverse):
+        # Pobranie danych z kolumny do posortowania
+        dane = [(tree.set(k, col), k) for k in tree.get_children('')]
+
+        def konwertuj_do_sortowania(wartosc):
+            # Czyszczenie ze stopni i minut, aby móc sortować liczbowo
+            czysta_wartosc = wartosc.replace('°', '').replace("'", '').strip()
+            try:
+                return float(czysta_wartosc.split()[0])
+            except (ValueError, IndexError):
+                return wartosc
+
+        # Sortowanie (liczbowo lub alfabetycznie w zależności od zawartości)
+        dane.sort(key=lambda t: konwertuj_do_sortowania(t[0]), reverse=reverse)
+
+        # Przestawienie wierszy w Treeview
+        for index, (val, k) in enumerate(dane):
+            tree.move(k, '', index)
+
+        # Zmiana kierunku sortowania przy następnym kliknięciu
+        tree.heading(col, command=lambda _col=col: self.sortuj_kolumne(tree, _col, not reverse))
+
     def stworz_tabele(self, parent, naglowki):
         scroll_y = ttk.Scrollbar(parent, orient=tk.VERTICAL)
         tree = ttk.Treeview(parent, yscrollcommand=scroll_y.set, show="headings")
@@ -54,7 +76,8 @@ class PanelKosmogramu(tk.Frame):
 
         tree["columns"] = naglowki
         for naglowek in naglowki:
-            tree.heading(naglowek, text=naglowek)
+            # Podpięcie metody sortującej pod kliknięcie w nagłówek
+            tree.heading(naglowek, text=naglowek, command=lambda _col=naglowek: self.sortuj_kolumne(tree, _col, False))
             tree.column(naglowek, anchor=tk.CENTER)
 
         return tree
@@ -75,22 +98,55 @@ class PanelKosmogramu(tk.Frame):
     def pokaz_wykres(self):
         okno = tk.Toplevel(self)
         okno.title("Wizualizacja Kosmogramu")
-        # Dodane 20px na szerokość i wysokość, żeby zmieścić paski przewijania
-        okno.geometry("820x850")
-        okno.configure(bg="white")
+        okno.geometry("820x750")
+        okno.configure(bg="#f0f0f0")
 
-        # Kontener na Canvas i Scrollbary
+        panel_zapisu = tk.Frame(okno, bg="#e0e0e0", pady=10)
+        panel_zapisu.pack(side=tk.BOTTOM, fill=tk.X)
+
+        def zapisz_obraz():
+            from tkinter import filedialog, messagebox
+            try:
+                from PIL import ImageGrab
+            except ImportError:
+                messagebox.showerror("Brak biblioteki", "Zainstaluj bibliotekę Pillow w terminalu:\npip install Pillow")
+                return
+
+            plik = filedialog.asksaveasfilename(
+                title="Zapisz kosmogram jako",
+                defaultextension=".png",
+                filetypes=[("Pliki PNG", "*.png")],
+                initialfile="Kosmogram.png"
+            )
+
+            if not plik:
+                return
+
+            okno.update()
+            x = canvas.winfo_rootx()
+            y = canvas.winfo_rooty()
+            w = canvas.winfo_width()
+            h = canvas.winfo_height()
+
+            try:
+                img = ImageGrab.grab(bbox=(x, y, x + w, y + h))
+                img.save(plik)
+                messagebox.showinfo("Sukces", "Kosmogram został pomyślnie zapisany!")
+            except Exception as e:
+                messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać pliku:\n{e}")
+
+        tk.Button(panel_zapisu, text="Zapisz kosmogram (PNG)", command=zapisz_obraz,
+                  bg="#2196F3", fg="white", font=("Helvetica", 10, "bold"), padx=20).pack()
+
         ramka_wykresu = tk.Frame(okno, bg="white")
-        ramka_wykresu.pack(fill=tk.BOTH, expand=True)
+        ramka_wykresu.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Suwaki
         suwak_y = ttk.Scrollbar(ramka_wykresu, orient=tk.VERTICAL)
         suwak_y.pack(side=tk.RIGHT, fill=tk.Y)
 
         suwak_x = ttk.Scrollbar(ramka_wykresu, orient=tk.HORIZONTAL)
         suwak_x.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Płótno ze stałym polem rysowania 800x800 i spięciem z suwakami
         canvas = tk.Canvas(ramka_wykresu, bg="white", width=800, height=800, highlightthickness=0,
                            scrollregion=(0, 0, 800, 800),
                            yscrollcommand=suwak_y.set, xscrollcommand=suwak_x.set)
@@ -104,7 +160,6 @@ class PanelKosmogramu(tk.Frame):
         r_wew = 240
         r_planety = 200
 
-        # W astrologii punktem zerowym do rysowania jest Ascendent (zawsze lewa strona - 180°)
         asc_lon = 0.0
         for d in self.domy_dane:
             if "ASC" in d[0]:
@@ -115,7 +170,6 @@ class PanelKosmogramu(tk.Frame):
             kat_rad = math.radians(asc_lon - lon + 180)
             return cx + promien * math.cos(kat_rad), cy + promien * math.sin(kat_rad)
 
-        # Siatka znaków zodiaku
         ZNAKI = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"]
         for i in range(12):
             stopien_poczatku = i * 30
@@ -146,7 +200,6 @@ class PanelKosmogramu(tk.Frame):
                 numer = int(d[0].replace("Dom ", ""))
                 domy_kordy[numer] = wartosc
 
-        # Rysowanie linii domów (wierzchołki) oraz ich numerów
         for i in range(1, 13):
             if i in domy_kordy:
                 lon = domy_kordy[i]
@@ -165,7 +218,6 @@ class PanelKosmogramu(tk.Frame):
                 txt_x, txt_y = lon_na_xy(mid_lon, 70)
                 canvas.create_text(txt_x, txt_y, text=str(i), font=("Helvetica", 14, "bold"), fill="gray")
 
-        # Rysowanie Głównych Osi
         if "Ascendent" in kordy and "Descendant" in kordy:
             x1, y1 = lon_na_xy(kordy["Ascendent"], r_wew)
             x2, y2 = lon_na_xy(kordy["Descendant"], r_wew)
@@ -180,7 +232,6 @@ class PanelKosmogramu(tk.Frame):
             canvas.create_text(x1, y1 - 20, text="MC", fill="blue", font=("Helvetica", 10, "bold"))
             canvas.create_text(x2, y2 + 20, text="IC", fill="blue", font=("Helvetica", 10, "bold"))
 
-        # Aspekty
         kolory_aspektow = {
             "Koniunkcja": "black",
             "Trygon": "green",
@@ -197,7 +248,6 @@ class PanelKosmogramu(tk.Frame):
                 kolor = kolory_aspektow.get(aspekt, "gray")
                 canvas.create_line(x1, y1, x2, y2, fill=kolor, width=1)
 
-        # Planety
         for nazwa, dlugosc in kordy.items():
             if nazwa in ["Ascendent", "Descendant", "Medium Coeli", "Imum Coeli"]:
                 continue
@@ -212,7 +262,6 @@ class PanelKosmogramu(tk.Frame):
             skrot = nazwa[:3].upper() if "Węzeł" not in nazwa else ("WĘZ_N" if "Półn" in nazwa else "WĘZ_S")
             canvas.create_text(txt_x, txt_y, text=skrot, font=("Helvetica", 9, "bold"))
 
-        # Legenda
         legenda_x = 20
         legenda_y = 20
         canvas.create_text(legenda_x, legenda_y, text="LEGENDA KOSMOGRAMU:", anchor=tk.W,
@@ -238,43 +287,3 @@ class PanelKosmogramu(tk.Frame):
                 canvas.create_line(legenda_x, legenda_y, legenda_x + 30, legenda_y, fill=kolor, width=grubosc)
             canvas.create_text(legenda_x + 40, legenda_y, text=tekst, anchor=tk.W, font=("Helvetica", 9))
             legenda_y += 20
-
-        # --- SEKCJA ZAPISU DO PNG ---
-        panel_zapisu = tk.Frame(okno, bg="white")
-        panel_zapisu.pack(fill=tk.X, side=tk.BOTTOM, pady=10)
-
-        def zapisz_obraz():
-            from tkinter import filedialog, messagebox
-            try:
-                from PIL import ImageGrab
-            except ImportError:
-                messagebox.showerror("Brak biblioteki", "Zainstaluj bibliotekę Pillow w terminalu:\npip install Pillow")
-                return
-
-            plik = filedialog.asksaveasfilename(
-                title="Zapisz kosmogram jako",
-                defaultextension=".png",
-                filetypes=[("Pliki PNG", "*.png")],
-                initialfile="Kosmogram.png"
-            )
-
-            if not plik:
-                return
-
-            okno.update()
-            # Pobieranie zrzutu ekranu musi zostać wykonane na powiększonym oknie,
-            # aby zapisać widok całego wykresu.
-            x = canvas.winfo_rootx()
-            y = canvas.winfo_rooty()
-            w = canvas.winfo_width()
-            h = canvas.winfo_height()
-
-            try:
-                img = ImageGrab.grab(bbox=(x, y, x + w, y + h))
-                img.save(plik)
-                messagebox.showinfo("Sukces", "Kosmogram został pomyślnie zapisany!")
-            except Exception as e:
-                messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać pliku:\n{e}")
-
-        tk.Button(panel_zapisu, text="Zapisz kosmogram (PNG)", command=zapisz_obraz,
-                  bg="#2196F3", fg="white", font=("Helvetica", 10, "bold")).pack()

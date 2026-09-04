@@ -109,8 +109,7 @@ class EphemerisEngine:
         self.polish_names = {
             swe.SUN: "SŁOŃCE", swe.MOON: "KSIĘŻYC", swe.MERCURY: "MERKURY",
             swe.VENUS: "WENUS", swe.MARS: "MARS", swe.JUPITER: "JOWISZ",
-            swe.SATURN: "SATURN", swe.URANUS: "URAN", swe.NEPTUNE: "NEPTUN",
-            swe.PLUTO: "PLUTON"
+            swe.SATURN: "SATURN", swe.URANUS: "URAN", swe.NEPTUNE: "NEPTUN"
         }
 
     def get_polish_name(self, body_id: int) -> str | None:
@@ -341,12 +340,11 @@ class EphemerisEngine:
         prev_E = prev_sun_lon = None
         hist_D_moon, hist_D_sun, hist_Dec = [], [], []
 
-        planety_zewn = [swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO]
+        planety_zewn = [swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE]
         planety_wewn = [swe.MERCURY, swe.VENUS]
         prev_lon_planet, prev_speed_planet = {}, {}
         hist_elong = {swe.MERCURY: [], swe.VENUS: []}
-        wszystkie_ciala = [swe.MOON, swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE,
-                           swe.PLUTO]
+        wszystkie_ciala = [swe.MOON, swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE]
         prev_pair_diff = {}
 
         jd = jd_base
@@ -556,14 +554,14 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
     LONGITUDE, LATITUDE, ELEV = pozycja
     lokalna_strefa_tz = ZoneInfo(strefa_str)
 
-    naglowki_slonce = ["Dzień", "Słońce Wsch.", "Słońce Gór.", "Słońce Zach.", "Odl. Słońca [AU]", "Księżyc Wsch.",
-                       "Księżyc Gór.", "Księżyc Zach.", "Odl. Księżyca [km]", "Faza [%]"]
+    naglowki_slonce = ["Dzień", "Słońce Wsch.", "Słońce Gór.", "Słońce Zach.", "Odl. Słońca\n[AU]", "Księżyc Wsch.",
+                       "Księżyc Gór.", "Księżyc Zach.", "Odl. Księżyca\n[km]", "Faza\n[%]"]
 
-    planety = [swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE, swe.PLUTO]
-    naglowki_planety = ["Dzień", "Świt astr.", "Zmierzch astr."]
+    planety = [swe.MERCURY, swe.VENUS, swe.MARS, swe.JUPITER, swe.SATURN, swe.URANUS, swe.NEPTUNE]
+    naglowki_planety = ["Dzień", "Świt\nastr.", "Zmierzch\nastr."]
     for p in planety:
         nazwa = engine.get_polish_name(p).capitalize()
-        naglowki_planety.append(f"{nazwa} W-G-Z")
+        naglowki_planety.append(f"{nazwa}\nW-G-Z")
 
     try:
         start_date_local = datetime.datetime(rok, miesiac, dzien, 0, 0, 0, tzinfo=lokalna_strefa_tz)
@@ -573,7 +571,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
 
     wyniki_slonce, wyniki_planety, wyniki_dso = [], [], []
     naglowki_dso = ["Dzień"]
-    for dso in obiekty_dso: naglowki_dso.append(f"{dso} (W-G-Z)")
+    for dso in obiekty_dso: naglowki_dso.append(f"{dso}\nW-G-Z")
 
     for j in range(days):
         current_local = start_date_local + datetime.timedelta(days=j)
