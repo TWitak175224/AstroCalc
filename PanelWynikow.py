@@ -354,6 +354,9 @@ class PanelWynikow(tk.Frame):
                 if w_k_mc: dodaj_tabele(self.n_k, w_k_mc, "Kalendarium Zjawisk", max_kolumn=10)
                 if w_dso_mc: dodaj_tabele(self.n_dso, w_dso_mc, "Katalog DSO", max_kolumn=8)
 
+            doc.title = "Raport Astronomiczny"
+            doc.author = "AstroCalc v1.0"
+
             doc.build(elementy)
             messagebox.showinfo("Sukces", "Dokument PDF został wygenerowany pomyślnie.")
 
