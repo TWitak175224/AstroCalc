@@ -34,6 +34,10 @@ class PanelWynikow(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
+        # Zwiększenie wewnętrznego odstępu (paddingu) nagłówków, by zmieścić nową linię
+        style = ttk.Style()
+        style.configure("Treeview.Heading", padding=(12, 0))
+
         panel_gorny = tk.Frame(self)
         panel_gorny.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
@@ -51,12 +55,10 @@ class PanelWynikow(tk.Frame):
 
     def _parsuj_rok_miesiac(self, data_str, typ):
         try:
-            # Sprawdzamy czy to format YYYY-MM-DD (Zjawiska)
             if '-' in data_str[:10]:
                 parts = data_str[:10].split('-')
                 if len(parts) >= 2:
                     return int(parts[0]), int(parts[1])
-            # Sprawdzamy czy to format DD.MM.YYYY (Słońce, Planety, DSO)
             elif '.' in data_str[:10]:
                 parts = data_str[:10].split('.')
                 if len(parts) == 3:
@@ -103,8 +105,13 @@ class PanelWynikow(tk.Frame):
         tree.tag_configure('nieparzysty', background='#F2F2F2')
 
         for n in naglowki:
-            tree.heading(n, text=n)
-            tree.column(n, anchor=tk.CENTER, width=120)
+            wyswietlany_naglowek = n.replace('\n', ' ')
+            tree.heading(n, text=wyswietlany_naglowek)
+
+            if "Dzień" in n or "Data" in n:
+                tree.column(n, anchor=tk.CENTER, width=120)
+            else:
+                tree.column(n, anchor=tk.CENTER, width=140)
 
         for indeks, w in enumerate(wiersze):
             tag = 'parzysty' if indeks % 2 == 0 else 'nieparzysty'
@@ -355,7 +362,7 @@ class PanelWynikow(tk.Frame):
                 if w_dso_mc: dodaj_tabele(self.n_dso, w_dso_mc, "Katalog DSO", max_kolumn=8)
 
             doc.title = "Raport Astronomiczny"
-            doc.author = "AstroCalc v1.0"
+            doc.author = "Aplikator Astronomiczny"
 
             doc.build(elementy)
             messagebox.showinfo("Sukces", "Dokument PDF został wygenerowany pomyślnie.")
