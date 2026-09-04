@@ -1588,7 +1588,7 @@ Gal.Equ,GEqu,ICRS,18,0,19.90411,-23,26,21.3339,269.0,473.0,0.0,0.0,0.0,0,0
 # The following "object" played an important role in 2011 and 2017 dooms day predictions,
 # as well as in some conspiration theories. It consists of the infrared objects
 # IRAS 13458-0823 and IRAS 13459-0812. Central point measured by DK.
-Infrared Dragon,IDrag, ICRS,13,48,0.0,-9,0,0.0,0,0,0,0,0.0, 19,  477
+ ,IDrag, ICRS,13,48,0.0,-9,0,0.0,0,0,0,0,0.0, 19,  477
 #
 # test star from Astronomica Almanac 2011
 AA11_page_B73,AA11     ,ICRS,14,39,36.4958,-60,50, 2.309,-3678.06,482.87,-21.6,742,0,0,0
@@ -1600,7 +1600,7 @@ Sun Pole,SunPole,ICRS,19,4,31.2,63,52,12.0,0.0,0.0,0.0,0.0,0.0,0,0
 Test,Test,ICRS,21,11,47.25986, 48,17,20.5855,0.0,0.0,0.0,0.0,0.0,0,0
 NGC 4194,NGC4194,ICRS,12,14,09.573,54,31,36.03,0.0,0.0,0.0,0.0,0.0,0,0
 Gliese 710,HD168442,ICRS,18,19,50.8412023907,-1,56,19.005321656,-0.460,-0.028,-13.8,52.5185,9.656,0,0
-
+#
 # ==========================================
 # KATALOG MESSIERA (DSO) - Dodatek do Systemu
 # Format: Nazwa, Skrot, Epoka, RA(h,m,s), Dec(d,m,s), pmRA, pmDec, RV, Paralaksa, Mag, 0, 0

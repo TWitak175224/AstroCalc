@@ -35,7 +35,6 @@ class PanelWynikow(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
-        # Dolny panel przycisków
         panel_btn = tk.Frame(self)
         panel_btn.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
 
@@ -51,7 +50,7 @@ class PanelWynikow(tk.Frame):
                                     fg="white", font=("Helvetica", 10, "bold"))
         btn_eksport_csv.pack(side=tk.RIGHT)
 
-        # Główny kontener na zakładki miesięcy i lat na górze
+        # Główny kontener na zakładki miesięcy i lat
         self.main_notebook = ttk.Notebook(self)
         self.main_notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -99,14 +98,12 @@ class PanelWynikow(tk.Frame):
         self.w_dso, self.n_dso = w_dso, n_dso
         self.config_dane = config
 
-        # Czyszczenie starych zakładek
         for tab in self.main_notebook.tabs():
             self.main_notebook.forget(tab)
 
         miesiace_nazwy = ["", "STYCZEŃ", "LUTY", "MARZEC", "KWIECIEŃ", "MAJ", "CZERWIEC",
                           "LIPIEC", "SIERPIEŃ", "WRZESIEŃ", "PAŹDZIERNIK", "LISTOPAD", "GRUDZIEŃ"]
 
-        # Zbieramy unikalne pary (rok, miesiąc) ze wszystkich tabel
         unikalne_m_y = set()
         for w in self.w_s: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 's'))
         for w in self.w_p: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'p'))
@@ -119,44 +116,54 @@ class PanelWynikow(tk.Frame):
         if not miesiace_posortowane:
             miesiace_posortowane = [(datetime.now().year, datetime.now().month)]
 
-        # Tworzymy zakładkę na górze dla każdego miesiąca/roku
+        # --- LOGIKA WYŚWIETLANIA ZAKŁADEK ---
+        pokaz_kalendarium = False
+        pokaz_dso = False
+
+        if self.config_dane:
+            # Pokaż kalendarium, jeśli jakiekolwiek zjawisko jest zaznaczone jako True
+            pokaz_kalendarium = any(self.config_dane.get('zjawiska', {}).values())
+            # Pokaż DSO, jeśli lista wybranych obiektów nie jest pusta
+            pokaz_dso = len(self.config_dane.get('obiekty_dso', [])) > 0
+
         for rok, miesiac in miesiace_posortowane:
             nazwa_zakladki = f"{miesiace_nazwy[miesiac]} {rok}"
 
             tab_mc = ttk.Frame(self.main_notebook)
             self.main_notebook.add(tab_mc, text=nazwa_zakladki)
 
-            # Podzakładki dla kategorii wewnątrz danego miesiąca
             sub_notebook = ttk.Notebook(tab_mc)
             sub_notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-            # 1. Słońce i Księżyc
+            # Słońce i Księżyc (Zawsze widoczne)
             f_slonce = ttk.Frame(sub_notebook)
             sub_notebook.add(f_slonce, text="Słońce i Księżyc")
             tree_s = self.stworz_tabele(f_slonce)
             w_s_mc = [w for w in self.w_s if self._parsuj_rok_miesiac(w[0], 's') == (rok, miesiac)]
             self.wypelnij_tabele(tree_s, self.n_s, w_s_mc)
 
-            # 2. Planety
+            # Planety (Zawsze widoczne)
             f_planety = ttk.Frame(sub_notebook)
             sub_notebook.add(f_planety, text="Planety")
             tree_p = self.stworz_tabele(f_planety)
             w_p_mc = [w for w in self.w_p if self._parsuj_rok_miesiac(w[0], 'p') == (rok, miesiac)]
             self.wypelnij_tabele(tree_p, self.n_p, w_p_mc)
 
-            # 3. Kalendarium Zjawisk
-            f_kal = ttk.Frame(sub_notebook)
-            sub_notebook.add(f_kal, text="Kalendarium Zjawisk")
-            tree_k = self.stworz_tabele(f_kal)
-            w_k_mc = [w for w in self.w_k if self._parsuj_rok_miesiac(w[0], 'k') == (rok, miesiac)]
-            self.wypelnij_tabele(tree_k, self.n_k, w_k_mc)
+            # Kalendarium (Warunkowe)
+            if pokaz_kalendarium:
+                f_kal = ttk.Frame(sub_notebook)
+                sub_notebook.add(f_kal, text="Kalendarium Zjawisk")
+                tree_k = self.stworz_tabele(f_kal)
+                w_k_mc = [w for w in self.w_k if self._parsuj_rok_miesiac(w[0], 'k') == (rok, miesiac)]
+                self.wypelnij_tabele(tree_k, self.n_k, w_k_mc)
 
-            # 4. Katalog DSO
-            f_dso = ttk.Frame(sub_notebook)
-            sub_notebook.add(f_dso, text="Katalog DSO")
-            tree_d = self.stworz_tabele(f_dso)
-            w_dso_mc = [w for w in self.w_dso if self._parsuj_rok_miesiac(w[0], 'd') == (rok, miesiac)]
-            self.wypelnij_tabele(tree_d, self.n_dso, w_dso_mc)
+            # DSO (Warunkowe)
+            if pokaz_dso:
+                f_dso = ttk.Frame(sub_notebook)
+                sub_notebook.add(f_dso, text="Katalog DSO")
+                tree_d = self.stworz_tabele(f_dso)
+                w_dso_mc = [w for w in self.w_dso if self._parsuj_rok_miesiac(w[0], 'd') == (rok, miesiac)]
+                self.wypelnij_tabele(tree_d, self.n_dso, w_dso_mc)
 
     def eksportuj_pdf(self):
         plik = filedialog.asksaveasfilename(
@@ -181,7 +188,6 @@ class PanelWynikow(tk.Frame):
                 name='InfoStrony', fontName=self.font_regular, fontSize=12, alignment=1, spaceAfter=8,
                 textColor=colors.HexColor('#34495e')
             )
-
             styl_miesiaca = ParagraphStyle(
                 name='Miesiac', fontName=self.font_bold, fontSize=16, alignment=1, spaceAfter=15, spaceBefore=10,
                 textColor=colors.HexColor('#2c3e50')
@@ -190,7 +196,7 @@ class PanelWynikow(tk.Frame):
                 name='Sekcja', fontName=self.font_bold, fontSize=12, spaceAfter=8, spaceBefore=12
             )
 
-            # --- STRONA TYTUŁOWA ---
+            # STRONA TYTUŁOWA
             if self.config_dane:
                 start_dt = datetime(self.config_dane['rok'], self.config_dane['miesiac'], self.config_dane['dzien'])
                 end_dt = start_dt + timedelta(days=self.config_dane['dni_do_analizy'] - 1)
@@ -218,10 +224,8 @@ class PanelWynikow(tk.Frame):
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ]))
             elementy.append(t_tytul)
-
             elementy.append(PageBreak())
 
-            # --- KOLEJNE STRONY (MIESIĄCE) ---
             def dodaj_sekcje(tytul, naglowki, wiersze):
                 if not wiersze: return
                 elementy.append(Paragraph(tytul, styl_sekcji))

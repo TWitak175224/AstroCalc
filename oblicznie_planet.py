@@ -138,31 +138,28 @@ class EphemerisEngine:
     def calculate_dso_rise_set(self, date_utc, lat, lon, elev, starname):
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
-        geopos = (lon, lat, elev)
+        geopos = (float(lon), float(lat), float(elev))
         wyniki = {'wschod_jd': None, 'gorowanie_jd': None, 'zachod_jd': None}
 
         nazwa_szukana = f",{starname}"
 
+        flagi_dso = self.flags | swe.BIT_DISC_CENTER
         try:
-            res_rise = swe.rise_trans(jd_utc, swe.FIXSTAR, nazwa_szukana, self.flags,
-                                      swe.CALC_RISE | swe.BIT_DISC_CENTER, geopos, 1013.25, 15.0)
+            res_rise = swe.rise_trans(jd_utc, nazwa_szukana, swe.CALC_RISE, geopos, 1013.25, 15.0, flagi_dso)
             if res_rise[0] >= 0:
                 wyniki['wschod_jd'] = res_rise[1][0]
         except Exception:
             pass
 
         try:
-            res_trans = swe.rise_trans(jd_utc, swe.FIXSTAR, nazwa_szukana, self.flags,
-                                       swe.CALC_MTRANSIT | swe.BIT_DISC_CENTER, geopos, 1013.25, 15.0)
+            res_trans = swe.rise_trans(jd_utc, nazwa_szukana, swe.CALC_MTRANSIT, geopos, 1013.25, 15.0, flagi_dso)
             if res_trans[0] >= 0:
                 wyniki['gorowanie_jd'] = res_trans[1][0]
         except Exception:
             pass
 
         try:
-            res_set = swe.rise_trans(jd_utc, swe.FIXSTAR, nazwa_szukana, self.flags,
-                                     swe.CALC_SET | swe.BIT_DISC_CENTER,
-                                     geopos, 1013.25, 15.0)
+            res_set = swe.rise_trans(jd_utc, nazwa_szukana, swe.CALC_SET, geopos, 1013.25, 15.0, flagi_dso)
             if res_set[0] >= 0:
                 wyniki['zachod_jd'] = res_set[1][0]
         except Exception:
