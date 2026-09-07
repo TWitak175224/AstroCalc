@@ -9,7 +9,7 @@ import os
 from timezonefinder import TimezoneFinder
 
 try:
-    from tkcalendar import DateEntry
+    from tkcalendar import Calendar
 
     TKCALENDAR_DOSTEPNY = True
 except ImportError:
@@ -37,16 +37,39 @@ class StartPanel(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
-        panel_lewy = tk.Frame(self, width=320)
+        panel_lewy = tk.Frame(self, width=330)
         panel_lewy.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+        panel_lewy.pack_propagate(False)
 
         panel_prawy = tk.Frame(self)
         panel_prawy.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         tk.Label(panel_lewy, text="Parametry Obliczeń", font=("Helvetica", 12, "bold")).pack(pady=(0, 5))
 
+        tk.Button(panel_lewy, text="Generuj", command=self.zbierz_i_wyslij, bg="#4CAF50",
+                  fg="white", font=("Helvetica", 12, "bold")).pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0), ipady=5)
+
+        ramka_geo = tk.LabelFrame(panel_lewy, text="Lokalizacja (Obserwator / Urodzenie)")
+        ramka_geo.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 5))
+
+        tk.Label(ramka_geo, text="Szerokość:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_lat = tk.Entry(ramka_geo, width=12)
+        self.entry_lat.grid(row=0, column=1, padx=5, pady=2)
+
+        tk.Label(ramka_geo, text="Długość:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_lon = tk.Entry(ramka_geo, width=12)
+        self.entry_lon.grid(row=1, column=1, padx=5, pady=2)
+
+        tk.Label(ramka_geo, text="Wys (m):").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_elev = tk.Entry(ramka_geo, width=12)
+        self.entry_elev.insert(0, "100.0")
+        self.entry_elev.grid(row=2, column=1, padx=5, pady=2)
+
+        self.lbl_strefa = tk.Label(ramka_geo, text="Europe/Warsaw", fg="blue", font=("Helvetica", 8, "bold"))
+        self.lbl_strefa.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
+
         self.notebook = ttk.Notebook(panel_lewy)
-        self.notebook.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=5)
 
         tab_efemerydy = ttk.Frame(self.notebook)
         tab_kosmogram = ttk.Frame(self.notebook)
@@ -54,52 +77,60 @@ class StartPanel(tk.Frame):
         self.notebook.add(tab_efemerydy, text="Efemerydy")
         self.notebook.add(tab_kosmogram, text="Kosmogram")
 
-        # --- ZAKŁADKA 1: EFEMERYDY ---
+        # ==========================================
+        # ZAKŁADKA 1: EFEMERYDY
+        # ==========================================
         ramka_czasu = tk.LabelFrame(tab_efemerydy, text="Zakres Czasowy")
         ramka_czasu.pack(fill=tk.X, pady=5, padx=5)
+        ramka_czasu.columnconfigure(1, weight=1)
 
-        tk.Label(ramka_czasu, text="Data startu (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        tk.Label(ramka_czasu, text="Data startu:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+
+        # --- Zintegrowane pole daty z przyciskiem do ładnego kalendarza ---
+        ramka_daty_efe = tk.Frame(ramka_czasu)
+        ramka_daty_efe.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
+
+        self.entry_date = tk.Entry(ramka_daty_efe)
+        self.entry_date.insert(0, datetime.date.today().strftime('%Y-%m-%d'))
+        self.entry_date.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         if TKCALENDAR_DOSTEPNY:
-            self.entry_date = DateEntry(ramka_czasu, width=12, background='#2C3E50', foreground='white',
-                                        borderwidth=2, date_pattern='y-mm-dd')
-            self.entry_date.set_date(datetime.date.today())
-        else:
-            self.entry_date = tk.Entry(ramka_czasu)
-            self.entry_date.insert(0, datetime.date.today().strftime('%Y-%m-%d'))
-        self.entry_date.pack(fill=tk.X, padx=5, pady=2)
+            btn_cal1 = tk.Button(ramka_daty_efe, text="📅", command=lambda: self.otworz_kalendarz(self.entry_date))
+            btn_cal1.pack(side=tk.RIGHT, padx=(5, 0))
 
-        tk.Label(ramka_czasu, text="Maks. separacja koniunkcji [°]:").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.entry_okienko = tk.Entry(ramka_czasu)
-        self.entry_okienko.insert(0, "5.0")
-        self.entry_okienko.pack(fill=tk.X, padx=5, pady=2)
-
-        tk.Label(ramka_czasu, text="Liczba dni:").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        tk.Label(ramka_czasu, text="Liczba dni:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         self.entry_days = tk.Entry(ramka_czasu)
         self.entry_days.insert(0, "7")
-        self.entry_days.pack(fill=tk.X, padx=5, pady=2)
+        self.entry_days.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=2)
 
-        tk.Label(ramka_czasu, text="Krok dla planet:").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.entry_krok = tk.Spinbox(ramka_czasu, from_=1, to=20, width=18)
+        tk.Label(ramka_czasu, text="Krok (planety):").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_krok = tk.Spinbox(ramka_czasu, from_=1, to=20)
         self.entry_krok.delete(0, tk.END)
         self.entry_krok.insert(0, "2")
-        self.entry_krok.pack(fill=tk.X, padx=5, pady=(2, 5))
+        self.entry_krok.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=2)
+
+        tk.Label(ramka_czasu, text="Min. koniunkcja [°]:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_okienko = tk.Entry(ramka_czasu)
+        self.entry_okienko.insert(0, "5.0")
+        self.entry_okienko.grid(row=3, column=1, sticky=tk.EW, padx=5, pady=2)
 
         ramka_filtry = tk.LabelFrame(tab_efemerydy, text="Wybór Zjawisk")
         ramka_filtry.pack(fill=tk.X, pady=5, padx=5)
 
         tk.Checkbutton(ramka_filtry, text="Fazy Księżyca i zaćmienia",
-                       variable=self.zjawiska_vars["fazy_zacmienia"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Pory roku i roje meteorów", variable=self.zjawiska_vars["pory_roje"]).pack(
-            anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Ekstrema (Perygeum, itp.)", variable=self.zjawiska_vars["ekstrema"]).pack(
-            anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Koniunkcje (Słońce) i opozycje",
-                       variable=self.zjawiska_vars["slonce_planety"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Elongacje i retrogradacje", variable=self.zjawiska_vars["elong_retro"]).pack(
-            anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Zakrycia i Koniunkcje", variable=self.zjawiska_vars["zakrycia"]).pack(
-            anchor=tk.W, padx=5)
+                       variable=self.zjawiska_vars["fazy_zacmienia"]).grid(row=0, column=0, sticky=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Pory roku i roje meteorów", variable=self.zjawiska_vars["pory_roje"]).grid(
+            row=1, column=0, sticky=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Ekstrema (Perygeum, itp.)", variable=self.zjawiska_vars["ekstrema"]).grid(
+            row=2, column=0, sticky=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Koniunkcje i opozycje", variable=self.zjawiska_vars["slonce_planety"]).grid(
+            row=3, column=0, sticky=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Elongacje i retrogradacje", variable=self.zjawiska_vars["elong_retro"]).grid(
+            row=4, column=0, sticky=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Zakrycia planetarne", variable=self.zjawiska_vars["zakrycia"]).grid(row=5,
+                                                                                                               column=0,
+                                                                                                               sticky=tk.W,
+                                                                                                               padx=5)
 
         ramka_dso = tk.LabelFrame(tab_efemerydy, text="Katalog Messiera (DSO)")
         ramka_dso.pack(fill=tk.X, pady=5, padx=5)
@@ -108,42 +139,50 @@ class StartPanel(tk.Frame):
                                                                                                        padx=5, pady=5)
 
         self.lbl_dso_info = tk.Label(ramka_dso, text="Wybrano obiektów: 0", fg="blue", font=("Helvetica", 9, "bold"))
-        self.lbl_dso_info.pack(pady=(0, 5))
+        self.lbl_dso_info.pack(pady=(0, 2))
 
-        # --- ZAKŁADKA 2: KOSMOGRAM ---
+        tk.Button(tab_efemerydy, text="Pomoc - Efemerydy",
+                  command=lambda: self.otworz_pomoc("pomoc_efemerydy.json", "Pomoc - Kalendarium i Efemerydy"),
+                  bg="#2196F3", fg="white", font=("Helvetica", 9, "bold")).pack(fill=tk.X, padx=5, pady=(5, 5))
+
+        # ==========================================
+        # ZAKŁADKA 2: KOSMOGRAM
+        # ==========================================
         ramka_urodzeniowa = tk.LabelFrame(tab_kosmogram, text="Dane Urodzeniowe")
         ramka_urodzeniowa.pack(fill=tk.X, pady=5, padx=5)
+        ramka_urodzeniowa.columnconfigure(1, weight=1)
 
-        tk.Label(ramka_urodzeniowa, text="Data urodzenia (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        tk.Label(ramka_urodzeniowa, text="Data urodzenia:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+
+        # --- Zintegrowane pole daty w kosmogramie ---
+        ramka_daty_ur = tk.Frame(ramka_urodzeniowa)
+        ramka_daty_ur.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
+
+        self.entry_urodz_data = tk.Entry(ramka_daty_ur)
+        self.entry_urodz_data.insert(0, "2000-01-01")
+        self.entry_urodz_data.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         if TKCALENDAR_DOSTEPNY:
-            self.entry_urodz_data = DateEntry(ramka_urodzeniowa, width=12, background='#2C3E50', foreground='white',
-                                              borderwidth=2, date_pattern='y-mm-dd')
-            self.entry_urodz_data.set_date(datetime.date(2000, 1, 1))
-        else:
-            self.entry_urodz_data = tk.Entry(ramka_urodzeniowa)
-            self.entry_urodz_data.insert(0, "2000-01-01")
-        self.entry_urodz_data.pack(fill=tk.X, padx=5, pady=2)
+            btn_cal2 = tk.Button(ramka_daty_ur, text="📅", command=lambda: self.otworz_kalendarz(self.entry_urodz_data))
+            btn_cal2.pack(side=tk.RIGHT, padx=(5, 0))
 
-        tk.Label(ramka_urodzeniowa, text="Czas urodzenia (GG : MM):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        tk.Label(ramka_urodzeniowa, text="Czas (GG:MM):").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         ramka_zegar = tk.Frame(ramka_urodzeniowa)
-        ramka_zegar.pack(fill=tk.X, padx=5, pady=2)
+        ramka_zegar.grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
 
         self.spin_godz = ttk.Spinbox(ramka_zegar, from_=0, to=23, width=3, format="%02.0f")
         self.spin_godz.set("12")
         self.spin_godz.pack(side=tk.LEFT)
-
         tk.Label(ramka_zegar, text=" : ", font=("Helvetica", 10, "bold")).pack(side=tk.LEFT)
-
         self.spin_min = ttk.Spinbox(ramka_zegar, from_=0, to=59, width=3, format="%02.0f")
         self.spin_min.set("00")
         self.spin_min.pack(side=tk.LEFT)
 
-        tk.Label(ramka_urodzeniowa, text="System domów:").pack(anchor=tk.W, padx=5, pady=(8, 0))
+        tk.Label(ramka_urodzeniowa, text="System domów:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
         self.combo_domy = ttk.Combobox(ramka_urodzeniowa,
                                        values=["Placidus", "Koch", "Regiomontanus", "Campanus", "Równe (Equal)"])
         self.combo_domy.set("Placidus")
-        self.combo_domy.pack(fill=tk.X, padx=5, pady=(2, 5))
+        self.combo_domy.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=2)
 
         ramka_orby = tk.LabelFrame(tab_kosmogram, text="Tolerancje Aspektów (Orby [°])")
         ramka_orby.pack(fill=tk.X, pady=5, padx=5)
@@ -173,28 +212,9 @@ class StartPanel(tk.Frame):
         self.orb_opo.insert(0, "8.0")
         self.orb_opo.grid(row=2, column=1, padx=5, pady=2)
 
-        # --- LOKALIZACJA ---
-        ramka_geo = tk.LabelFrame(panel_lewy, text="Lokalizacja (Obserwator / Urodzenie)")
-        ramka_geo.pack(fill=tk.X, pady=5)
-
-        tk.Label(ramka_geo, text="Szerokość:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
-        self.entry_lat = tk.Entry(ramka_geo, width=12)
-        self.entry_lat.grid(row=0, column=1, padx=5, pady=2)
-
-        tk.Label(ramka_geo, text="Długość:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
-        self.entry_lon = tk.Entry(ramka_geo, width=12)
-        self.entry_lon.grid(row=1, column=1, padx=5, pady=2)
-
-        tk.Label(ramka_geo, text="Wys (m):").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        self.entry_elev = tk.Entry(ramka_geo, width=12)
-        self.entry_elev.insert(0, "100.0")
-        self.entry_elev.grid(row=2, column=1, padx=5, pady=2)
-
-        self.lbl_strefa = tk.Label(ramka_geo, text="Europe/Warsaw", fg="blue", font=("Helvetica", 8, "bold"))
-        self.lbl_strefa.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
-
-        tk.Button(panel_lewy, text="Generuj", command=self.zbierz_i_wyslij, bg="#4CAF50",
-                  fg="white", font=("Helvetica", 12, "bold")).pack(fill=tk.X, pady=10, ipady=5)
+        tk.Button(tab_kosmogram, text="Pomoc - Kosmogram",
+                  command=lambda: self.otworz_pomoc("pomoc_kosmogram.json", "Pomoc - Ustawienia Kosmogramu"),
+                  bg="#9C27B0", fg="white", font=("Helvetica", 9, "bold")).pack(fill=tk.X, padx=5, pady=(10, 5))
 
         self.mapa = tkintermapview.TkinterMapView(panel_prawy, corner_radius=5)
         self.mapa.pack(fill=tk.BOTH, expand=True)
@@ -205,6 +225,70 @@ class StartPanel(tk.Frame):
         self.rysuj_siatke(co_ile_stopni=15)
 
         self.wczytaj_ustawienia()
+
+    # --- NOWA METODA: WYSKAKUJĄCY, BEZPIECZNY KALENDARZ ---
+    def otworz_kalendarz(self, pole_docelowe):
+        okno_kal = tk.Toplevel(self)
+        okno_kal.title("Wybierz datę")
+        okno_kal.geometry("280x250")
+        okno_kal.transient(self)
+        okno_kal.grab_set()
+
+        try:
+            aktualna = datetime.datetime.strptime(pole_docelowe.get(), "%Y-%m-%d").date()
+        except ValueError:
+            aktualna = datetime.date.today()
+
+        kalendarz = Calendar(okno_kal, selectmode='day', year=aktualna.year, month=aktualna.month, day=aktualna.day,
+                             date_pattern='y-mm-dd', background='#2C3E50', foreground='white', borderwidth=2)
+        kalendarz.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 5))
+
+        def zapisz_date():
+            pole_docelowe.delete(0, tk.END)
+            pole_docelowe.insert(0, kalendarz.get_date())
+            okno_kal.destroy()
+
+        tk.Button(okno_kal, text="Wybierz tę datę", command=zapisz_date, bg="#4CAF50", fg="white",
+                  font=("Helvetica", 10, "bold")).pack(pady=(0, 10), padx=10, fill=tk.X)
+
+    def otworz_pomoc(self, plik_json, domyslny_tytul):
+        okno = tk.Toplevel(self)
+        okno.title(domyslny_tytul)
+        okno.geometry("500x400")
+        okno.transient(self)
+
+        txt = tk.Text(okno, wrap=tk.WORD, font=("Helvetica", 10), padx=15, pady=15, bg="#F9F9F9")
+        suwak = ttk.Scrollbar(okno, orient=tk.VERTICAL, command=txt.yview)
+        txt.config(yscrollcommand=suwak.set)
+
+        suwak.pack(side=tk.RIGHT, fill=tk.Y)
+        txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        tresc = ""
+        if os.path.exists(plik_json):
+            try:
+                with open(plik_json, "r", encoding="utf-8") as f:
+                    dane = json.load(f)
+
+                if "tytul" in dane:
+                    tresc += f"{dane['tytul']}\n"
+                    tresc += "=" * len(dane['tytul']) + "\n\n"
+
+                if "sekcje" in dane:
+                    for naglowek, tekst in dane["sekcje"].items():
+                        tresc += f"[{naglowek}]\n{tekst}\n\n"
+                elif isinstance(dane, dict):
+                    for k, v in dane.items():
+                        tresc += f"{k}\n{v}\n\n"
+                else:
+                    tresc = str(dane)
+            except Exception as e:
+                tresc = f"Wystąpił błąd podczas odczytu pliku {plik_json}:\n{e}"
+        else:
+            tresc = f"Brak pliku pomocy: {plik_json}\n\nUtwórz ten plik JSON w folderze głównym aplikacji, aby dodać dedykowaną instrukcję."
+
+        txt.insert(tk.END, tresc)
+        txt.config(state=tk.DISABLED)
 
     def rysuj_siatke(self, co_ile_stopni=15):
         for lat in range(-75, 90, co_ile_stopni):
@@ -273,6 +357,8 @@ class StartPanel(tk.Frame):
                 if sciezka_zdjecia and os.path.exists(sciezka_zdjecia):
                     img = tk.PhotoImage(file=sciezka_zdjecia)
                     lbl_zdjecie.config(image=img, text="", width=0, height=0)
+
+                    # noinspection PyUnresolvedReferences
                     lbl_zdjecie.image = img
                 else:
                     lbl_zdjecie.config(image="", text="[Zdjęcie niedostępne]", width=50, height=15)
@@ -291,7 +377,6 @@ class StartPanel(tk.Frame):
         ramka_glowna = tk.Frame(okno)
         ramka_glowna.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # --- RESPANSYWNY PANEL FILTROWANIA ---
         ramka_top = tk.LabelFrame(ramka_glowna, text="Szybkie filtry (czyszczą poprzedni wybór)")
         ramka_top.pack(fill=tk.X, side=tk.TOP, pady=(0, 10), ipady=5)
 
@@ -358,19 +443,19 @@ class StartPanel(tk.Frame):
         ramka_srodek = tk.Frame(ramka_glowna)
         ramka_srodek.pack(fill=tk.BOTH, expand=True)
 
-        plotno = tk.Canvas(ramka_srodek)
-        suwak_y = ttk.Scrollbar(ramka_srodek, orient="vertical", command=plotno.yview)
-        suwak_x = ttk.Scrollbar(ramka_srodek, orient="horizontal", command=plotno.xview)
+        płótno = tk.Canvas(ramka_srodek)
+        suwak_y = ttk.Scrollbar(ramka_srodek, orient="vertical", command=płótno.yview)
+        suwak_x = ttk.Scrollbar(ramka_srodek, orient="horizontal", command=płótno.xview)
 
-        ramka_przewijana = tk.Frame(plotno)
+        ramka_przewijana = tk.Frame(płótno)
 
-        ramka_przewijana.bind("<Configure>", lambda e: plotno.configure(scrollregion=plotno.bbox("all")))
-        plotno.create_window((0, 0), window=ramka_przewijana, anchor="nw")
-        plotno.configure(yscrollcommand=suwak_y.set, xscrollcommand=suwak_x.set)
+        ramka_przewijana.bind("<Configure>", lambda e: płótno.configure(scrollregion=płótno.bbox("all")))
+        płótno.create_window((0, 0), window=ramka_przewijana, anchor="nw")
+        płótno.configure(yscrollcommand=suwak_y.set, xscrollcommand=suwak_x.set)
 
         suwak_x.pack(side="bottom", fill="x")
         suwak_y.pack(side="right", fill="y")
-        plotno.pack(side="left", fill="both", expand=True)
+        płótno.pack(side="left", fill="both", expand=True)
 
         for i in range(1, 111):
             cb = tk.Checkbutton(ramka_przewijana, text=f"M{i}", variable=self.dso_vars[f"M{i}"])
@@ -501,40 +586,49 @@ class StartPanel(tk.Frame):
             aktywna_zakladka = self.notebook.index(self.notebook.select())
             tryb = "efemerydy" if aktywna_zakladka == 0 else "kosmogram"
 
-            data_start_str = self.entry_date.get()
-            rok, miesiac, dzien = map(int, data_start_str.split("-"))
-
-            try:
-                okienko_val = float(self.entry_okienko.get().replace(',', '.'))
-            except ValueError:
-                okienko_val = 5.0
-
-            try:
-                elev = float(self.entry_elev.get())
-            except ValueError:
-                elev = 100.0
-
-            zjawiska_konf = {k: v.get() for k, v in self.zjawiska_vars.items()}
-
             def bezpieczny_float(val, domyslna):
                 try:
-                    return float(val.replace(',', '.'))
+                    return float(str(val).replace(',', '.'))
                 except ValueError:
                     return domyslna
 
-            godzina = int(self.spin_godz.get())
-            minuta = int(self.spin_min.get())
+            def bezpieczny_int(val, domyslna):
+                try:
+                    return int(val)
+                except ValueError:
+                    return domyslna
+
+            data_start_str = self.entry_date.get()
+            try:
+                rok, miesiac, dzien = map(int, data_start_str.split("-"))
+            except ValueError:
+                dzisiaj = datetime.date.today()
+                rok, miesiac, dzien = dzisiaj.year, dzisiaj.month, dzisiaj.day
+
+            okienko_val = bezpieczny_float(self.entry_okienko.get(), 5.0)
+            elev = bezpieczny_float(self.entry_elev.get(), 100.0)
+            lat_val = bezpieczny_float(self.entry_lat.get(), 53.75)
+            lon_val = bezpieczny_float(self.entry_lon.get(), 20.51)
+
+            dni_analizy = bezpieczny_int(self.entry_days.get(), 7)
+            krok = bezpieczny_int(self.entry_krok.get(), 2)
+
+            godzina = bezpieczny_int(self.spin_godz.get(), 12)
+            minuta = bezpieczny_int(self.spin_min.get(), 0)
+
             urodz_czas_skladany = f"{godzina:02d}:{minuta:02d}"
+
+            zjawiska_konf = {k: v.get() for k, v in self.zjawiska_vars.items()}
 
             konfiguracja = {
                 "tryb": tryb,
                 "rok": rok, "miesiac": miesiac, "dzien": dzien,
-                "dni_do_analizy": int(self.entry_days.get()),
-                "lat_dd": float(self.entry_lat.get()),
-                "lon_dd": float(self.entry_lon.get()),
+                "dni_do_analizy": dni_analizy,
+                "lat_dd": lat_val,
+                "lon_dd": lon_val,
                 "elev": elev,
                 "timezone": self.lbl_strefa.cget("text"),
-                "krok_planety": int(self.entry_krok.get()),
+                "krok_planety": krok,
                 "okienko_koniunkcji": okienko_val,
                 "obiekty_dso": [n for n, v in self.dso_vars.items() if v.get()],
                 "zjawiska": zjawiska_konf,
