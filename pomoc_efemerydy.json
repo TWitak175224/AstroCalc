@@ -1,0 +1,7 @@
+{
+  "tytul": "Instrukcja: Efemerydy",
+  "sekcje": {
+    "Zakres czasowy": "Wpisz datę początkową i liczbę dni do analizy.",
+    "Krok dla planet": "Określa co ile dni wyliczana jest dokładna pozycja planet."
+  }
+}

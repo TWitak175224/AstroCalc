@@ -6,13 +6,13 @@ from zoneinfo import ZoneInfo
 import swisseph as swe
 
 
-def oblicz_wysokosc(jd_utc, body_id, lon, lat, flags):
+def oblicz_wysokosc(jd_utc, body_id, lon, lat, flags, elev=0.0):
     # Wymuszamy tryb topocentryczny dla dokładnych zakryć
-    swe.set_topo(float(lon), float(lat), 0.0)
+    swe.set_topo(float(lon), float(lat), elev)
     flagi_rownikowe = flags | swe.FLG_EQUATORIAL | swe.FLG_TOPOCTR
 
     coords, ret_flag = swe.calc_ut(jd_utc, body_id, flagi_rownikowe)
-    geopos = (float(lon), float(lat), 0.0)
+    geopos = (float(lon), float(lat), elev)
     pozycja_rownikowa = (coords[0], coords[1], coords[2])
 
     cisnienie = 1013.25
@@ -524,22 +524,34 @@ class EphemerisEngine:
         return zjawiska_jd
 
 
-def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe):
+def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe, data_str):
     wsch_jd = wyniki['wschod']
     gor_jd = wyniki['gorowanie_jd']
     zach_jd = wyniki['zachod']
 
-    gor_str = _jd_to_datetime(gor_jd).astimezone(strefa_tz).strftime('%H:%M') if gor_jd else "--:--"
-    wsch_str = _jd_to_datetime(wsch_jd).astimezone(strefa_tz).strftime('%H:%M') if wsch_jd else None
-    zach_str = _jd_to_datetime(zach_jd).astimezone(strefa_tz).strftime('%H:%M') if zach_jd else None
+    gor_dt = _jd_to_datetime(gor_jd).astimezone(strefa_tz) if gor_jd else None
+    wsch_dt = _jd_to_datetime(wsch_jd).astimezone(strefa_tz) if wsch_jd else None
+    zach_dt = _jd_to_datetime(zach_jd).astimezone(strefa_tz) if zach_jd else None
 
-    if wsch_str is None or zach_str is None:
-        jd_test = gor_jd if gor_jd else jd_bazowe
-        _, _, alt = oblicz_wysokosc(jd_test, cialo, lon, lat, flags)
-        znacznik = "/\\" if alt > 0 else "\\/"
+    # Zabezpieczenie przed "kradzieżą" zjawiska z sąsiedniego dnia
+    if wsch_dt and wsch_dt.strftime('%d.%m.%Y') != data_str:
+        wsch_dt = None
+    if zach_dt and zach_dt.strftime('%d.%m.%Y') != data_str:
+        zach_dt = None
 
-        wsch_str = wsch_str if wsch_str else znacznik
-        zach_str = zach_str if zach_str else znacznik
+    gor_str = gor_dt.strftime('%H:%M') if gor_dt else "--:--"
+    wsch_str = wsch_dt.strftime('%H:%M') if wsch_dt else None
+    zach_str = zach_dt.strftime('%H:%M') if zach_dt else None
+
+    # Brak wschodu: stan na początku doby (jd_bazowe + 0.001 to okolice 00:01)
+    if wsch_str is None:
+        _, _, alt_start = oblicz_wysokosc(jd_bazowe + 0.001, cialo, lon, lat, flags)
+        wsch_str = "/\\" if alt_start > 0 else "\\/"
+
+    # Brak zachodu: stan na końcu doby (jd_bazowe + 0.999 to okolice 23:58)
+    if zach_str is None:
+        _, _, alt_koniec = oblicz_wysokosc(jd_bazowe + 0.999, cialo, lon, lat, flags)
+        zach_str = "/\\" if alt_koniec > 0 else "\\/"
 
     return wsch_str, gor_str, zach_str
 
@@ -577,8 +589,9 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
         current_local = start_date_local + datetime.timedelta(days=j)
         data_str = current_local.strftime('%d.%m.%Y')
         utc_time = current_local.astimezone(datetime.timezone.utc)
-        jd_midnight = swe.julday(utc_time.year, utc_time.month, utc_time.day, 12.0)
-
+        # ZMIANA TUTAJ: Wyliczamy precyzyjny Julian Day dla 00:00 czasu lokalnego
+        dec_hour = utc_time.hour + (utc_time.minute / 60.0) + (utc_time.second / 3600.0)
+        jd_midnight = swe.julday(utc_time.year, utc_time.month, utc_time.day, dec_hour)
         wiersz_s = [data_str]
         jd_gor_ksiezyca = None
 
@@ -586,7 +599,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
             try:
                 wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, cialo)
                 w, g, z = odkoduj_zjawisko(wyniki, cialo, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz,
-                                           jd_midnight)
+                                           jd_midnight, data_str)
                 wiersz_s.extend([w, g, z])
 
                 odl_au = engine.pobierz_odleglosc(utc_time, cialo)
@@ -613,7 +626,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
                 try:
                     wyniki = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, p)
                     w, g, z = odkoduj_zjawisko(wyniki, p, LONGITUDE, LATITUDE, engine.flags, lokalna_strefa_tz,
-                                               jd_midnight)
+                                               jd_midnight, data_str)
                     wiersz_p.append(f"{w}  {g}  {z}")
                 except:
                     wiersz_p.append("Błąd")

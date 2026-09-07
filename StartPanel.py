@@ -4,7 +4,16 @@ import tkintermapview
 import requests
 import threading
 import datetime
+import json
+import os
 from timezonefinder import TimezoneFinder
+
+try:
+    from tkcalendar import DateEntry
+
+    TKCALENDAR_DOSTEPNY = True
+except ImportError:
+    TKCALENDAR_DOSTEPNY = False
 
 
 class StartPanel(tk.Frame):
@@ -50,8 +59,14 @@ class StartPanel(tk.Frame):
         ramka_czasu.pack(fill=tk.X, pady=5, padx=5)
 
         tk.Label(ramka_czasu, text="Data startu (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.entry_date = tk.Entry(ramka_czasu)
-        self.entry_date.insert(0, datetime.date.today().strftime('%Y-%m-%d'))
+
+        if TKCALENDAR_DOSTEPNY:
+            self.entry_date = DateEntry(ramka_czasu, width=12, background='#2C3E50', foreground='white',
+                                        borderwidth=2, date_pattern='y-mm-dd')
+            self.entry_date.set_date(datetime.date.today())
+        else:
+            self.entry_date = tk.Entry(ramka_czasu)
+            self.entry_date.insert(0, datetime.date.today().strftime('%Y-%m-%d'))
         self.entry_date.pack(fill=tk.X, padx=5, pady=2)
 
         tk.Label(ramka_czasu, text="Maks. separacja koniunkcji [°]:").pack(anchor=tk.W, padx=5, pady=(2, 0))
@@ -73,16 +88,25 @@ class StartPanel(tk.Frame):
         ramka_filtry = tk.LabelFrame(tab_efemerydy, text="Wybór Zjawisk")
         ramka_filtry.pack(fill=tk.X, pady=5, padx=5)
 
-        tk.Checkbutton(ramka_filtry, text="Fazy Księżyca i zaćmienia", variable=self.zjawiska_vars["fazy_zacmienia"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Pory roku i roje meteorów", variable=self.zjawiska_vars["pory_roje"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Ekstrema (Perygeum, itp.)", variable=self.zjawiska_vars["ekstrema"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Koniunkcje (Słońce) i opozycje", variable=self.zjawiska_vars["slonce_planety"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Elongacje i retrogradacje", variable=self.zjawiska_vars["elong_retro"]).pack(anchor=tk.W, padx=5)
-        tk.Checkbutton(ramka_filtry, text="Zakrycia i Koniunkcje(UWAGA: WOLNE!)", variable=self.zjawiska_vars["zakrycia"]).pack(anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Fazy Księżyca i zaćmienia",
+                       variable=self.zjawiska_vars["fazy_zacmienia"]).pack(anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Pory roku i roje meteorów", variable=self.zjawiska_vars["pory_roje"]).pack(
+            anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Ekstrema (Perygeum, itp.)", variable=self.zjawiska_vars["ekstrema"]).pack(
+            anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Koniunkcje (Słońce) i opozycje",
+                       variable=self.zjawiska_vars["slonce_planety"]).pack(anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Elongacje i retrogradacje", variable=self.zjawiska_vars["elong_retro"]).pack(
+            anchor=tk.W, padx=5)
+        tk.Checkbutton(ramka_filtry, text="Zakrycia i Koniunkcje", variable=self.zjawiska_vars["zakrycia"]).pack(
+            anchor=tk.W, padx=5)
 
         ramka_dso = tk.LabelFrame(tab_efemerydy, text="Katalog Messiera (DSO)")
         ramka_dso.pack(fill=tk.X, pady=5, padx=5)
-        tk.Button(ramka_dso, text="Wybierz obiekty DSO", command=self.otworz_okno_dso).pack(fill=tk.X, padx=5, pady=5)
+
+        tk.Button(ramka_dso, text="Wybierz obiekty DSO do raportu", command=self.otworz_okno_dso).pack(fill=tk.X,
+                                                                                                       padx=5, pady=5)
+
         self.lbl_dso_info = tk.Label(ramka_dso, text="Wybrano obiektów: 0", fg="blue", font=("Helvetica", 9, "bold"))
         self.lbl_dso_info.pack(pady=(0, 5))
 
@@ -90,18 +114,34 @@ class StartPanel(tk.Frame):
         ramka_urodzeniowa = tk.LabelFrame(tab_kosmogram, text="Dane Urodzeniowe")
         ramka_urodzeniowa.pack(fill=tk.X, pady=5, padx=5)
 
-        tk.Label(ramka_urodzeniowa, text="Data (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.entry_urodz_data = tk.Entry(ramka_urodzeniowa)
-        self.entry_urodz_data.insert(0, "2000-01-01")
+        tk.Label(ramka_urodzeniowa, text="Data urodzenia (RRRR-MM-DD):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+
+        if TKCALENDAR_DOSTEPNY:
+            self.entry_urodz_data = DateEntry(ramka_urodzeniowa, width=12, background='#2C3E50', foreground='white',
+                                              borderwidth=2, date_pattern='y-mm-dd')
+            self.entry_urodz_data.set_date(datetime.date(2000, 1, 1))
+        else:
+            self.entry_urodz_data = tk.Entry(ramka_urodzeniowa)
+            self.entry_urodz_data.insert(0, "2000-01-01")
         self.entry_urodz_data.pack(fill=tk.X, padx=5, pady=2)
 
-        tk.Label(ramka_urodzeniowa, text="Czas (GG:MM):").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.entry_urodz_czas = tk.Entry(ramka_urodzeniowa)
-        self.entry_urodz_czas.insert(0, "12:00")
-        self.entry_urodz_czas.pack(fill=tk.X, padx=5, pady=2)
+        tk.Label(ramka_urodzeniowa, text="Czas urodzenia (GG : MM):").pack(anchor=tk.W, padx=5, pady=(2, 0))
+        ramka_zegar = tk.Frame(ramka_urodzeniowa)
+        ramka_zegar.pack(fill=tk.X, padx=5, pady=2)
 
-        tk.Label(ramka_urodzeniowa, text="System domów:").pack(anchor=tk.W, padx=5, pady=(2, 0))
-        self.combo_domy = ttk.Combobox(ramka_urodzeniowa, values=["Placidus", "Koch", "Regiomontanus", "Campanus", "Równe (Equal)"])
+        self.spin_godz = ttk.Spinbox(ramka_zegar, from_=0, to=23, width=3, format="%02.0f")
+        self.spin_godz.set("12")
+        self.spin_godz.pack(side=tk.LEFT)
+
+        tk.Label(ramka_zegar, text=" : ", font=("Helvetica", 10, "bold")).pack(side=tk.LEFT)
+
+        self.spin_min = ttk.Spinbox(ramka_zegar, from_=0, to=59, width=3, format="%02.0f")
+        self.spin_min.set("00")
+        self.spin_min.pack(side=tk.LEFT)
+
+        tk.Label(ramka_urodzeniowa, text="System domów:").pack(anchor=tk.W, padx=5, pady=(8, 0))
+        self.combo_domy = ttk.Combobox(ramka_urodzeniowa,
+                                       values=["Placidus", "Koch", "Regiomontanus", "Campanus", "Równe (Equal)"])
         self.combo_domy.set("Placidus")
         self.combo_domy.pack(fill=tk.X, padx=5, pady=(2, 5))
 
@@ -160,8 +200,11 @@ class StartPanel(tk.Frame):
         self.mapa.pack(fill=tk.BOTH, expand=True)
         self.mapa.set_zoom(6)
         self.mapa.set_position(52.0691, 19.4805)
-        self.mapa.add_right_click_menu_command(label="Ustaw punkt obserwacji", command=self.ustaw_punkt_z_mapy, pass_coords=True)
+        self.mapa.add_right_click_menu_command(label="Ustaw punkt obserwacji", command=self.ustaw_punkt_z_mapy,
+                                               pass_coords=True)
         self.rysuj_siatke(co_ile_stopni=15)
+
+        self.wczytaj_ustawienia()
 
     def rysuj_siatke(self, co_ile_stopni=15):
         for lat in range(-75, 90, co_ile_stopni):
@@ -169,85 +212,185 @@ class StartPanel(tk.Frame):
         for lon in range(-180, 181, co_ile_stopni):
             self.mapa.set_path([(lat, lon) for lat in range(-85, 86, 5)], color="#808080", width=1)
 
+    def otworz_katalog_dso(self, parent_window):
+        okno = tk.Toplevel(parent_window)
+        okno.title("Katalog Obiektów Messiera")
+        okno.geometry("800x550")
+        okno.transient(parent_window)
+
+        baza_messiera = {}
+        if os.path.exists("messier_katalog.json"):
+            try:
+                with open("messier_katalog.json", "r", encoding="utf-8") as f:
+                    baza_messiera = json.load(f)
+            except Exception as e:
+                print(f"Błąd ładowania jsona: {e}")
+
+        ramka_lista = tk.Frame(okno, width=150)
+        ramka_lista.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+
+        ramka_detale = tk.Frame(okno)
+        ramka_detale.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        lista = tk.Listbox(ramka_lista, font=("Helvetica", 11))
+        suwak = ttk.Scrollbar(ramka_lista, orient=tk.VERTICAL, command=lista.yview)
+        lista.config(yscrollcommand=suwak.set)
+        suwak.pack(side=tk.RIGHT, fill=tk.Y)
+        lista.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        for i in range(1, 111):
+            lista.insert(tk.END, f"M{i}")
+
+        lbl_tytul = tk.Label(ramka_detale, text="Wybierz obiekt z listy", font=("Helvetica", 16, "bold"))
+        lbl_tytul.pack(pady=(0, 10))
+
+        lbl_zdjecie = tk.Label(ramka_detale, text="[Brak zdjęcia]", bg="#E0E0E0", width=50, height=15)
+        lbl_zdjecie.pack(pady=10)
+
+        txt_opis = tk.Text(ramka_detale, wrap=tk.WORD, height=10, font=("Helvetica", 10), bg="#F8F9FA")
+        txt_opis.pack(fill=tk.BOTH, expand=True)
+        txt_opis.insert(tk.END, "Tutaj pojawi się opis obiektu po jego wybraniu.")
+        txt_opis.config(state=tk.DISABLED)
+
+        def on_select(evt):
+            if not lista.curselection():
+                return
+            wybrany = lista.get(lista.curselection())
+            dane = baza_messiera.get(wybrany, {})
+
+            nazwa = dane.get("nazwa", "Brak nazwy w bazie")
+            opis = dane.get("opis", "Plik messier_katalog.json nie zawiera opisu dla tego obiektu.")
+            sciezka_zdjecia = dane.get("zdjecie", "")
+
+            lbl_tytul.config(text=f"{wybrany} - {nazwa}")
+
+            txt_opis.config(state=tk.NORMAL)
+            txt_opis.delete(1.0, tk.END)
+            txt_opis.insert(tk.END, opis)
+            txt_opis.config(state=tk.DISABLED)
+
+            try:
+                if sciezka_zdjecia and os.path.exists(sciezka_zdjecia):
+                    img = tk.PhotoImage(file=sciezka_zdjecia)
+                    lbl_zdjecie.config(image=img, text="", width=0, height=0)
+                    lbl_zdjecie.image = img
+                else:
+                    lbl_zdjecie.config(image="", text="[Zdjęcie niedostępne]", width=50, height=15)
+            except Exception:
+                lbl_zdjecie.config(image="", text="[Format nieobsługiwany - użyj .png lub .gif]", width=50, height=15)
+
+        lista.bind("<<ListboxSelect>>", on_select)
+
     def otworz_okno_dso(self):
         okno = tk.Toplevel(self)
         okno.title("Wybierz obiekty Messiera")
-        okno.geometry("850x450")
+        okno.geometry("850x550")
         okno.transient(self)
         okno.grab_set()
 
         ramka_glowna = tk.Frame(okno)
         ramka_glowna.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # GÓRNA RAMKA NA MASTER CHECKBOXY
-        ramka_top = tk.Frame(ramka_glowna)
-        ramka_top.pack(fill=tk.X, side=tk.TOP, pady=(0, 10))
+        # --- RESPANSYWNY PANEL FILTROWANIA ---
+        ramka_top = tk.LabelFrame(ramka_glowna, text="Szybkie filtry (czyszczą poprzedni wybór)")
+        ramka_top.pack(fill=tk.X, side=tk.TOP, pady=(0, 10), ipady=5)
 
-        # Obiekty przyporządkowane do półkul na podstawie deklinacji (Dec > 0 i Dec < 0)
-        polnocne = [1, 3, 5, 13, 15, 27, 29, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 44, 45, 49, 51, 52, 53, 56, 57, 58, 59, 60, 61, 63, 64, 65, 66, 67, 71, 74, 76, 78, 81, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 105, 106, 108, 109, 110]
-        poludniowe = [2, 4, 6, 7, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 30, 41, 42, 43, 46, 47, 48, 50, 54, 55, 62, 68, 69, 70, 72, 73, 75, 77, 79, 80, 83, 93, 104, 107]
+        ramka_top.columnconfigure(1, weight=1)
+        ramka_top.columnconfigure(3, weight=1)
 
-        var_pol = tk.BooleanVar(value=all(self.dso_vars[f"M{i}"].get() for i in polnocne))
-        var_pld = tk.BooleanVar(value=all(self.dso_vars[f"M{i}"].get() for i in poludniowe))
-        var_wsz = tk.BooleanVar(value=all(self.dso_vars[f"M{i}"].get() for i in range(1, 111)))
+        tk.Label(ramka_top, text="Typ obiektu:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.E)
+        combo_typ = ttk.Combobox(ramka_top,
+                                 values=["Wszystkie", "Galaktyki", "Mgławice", "Gromady Otwarte", "Gromady Kuliste",
+                                         "Inne"], state="readonly")
+        combo_typ.set("Wszystkie")
+        combo_typ.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
 
-        def przelacz_wszystkie():
-            stan = var_wsz.get()
-            for i in range(1, 111): self.dso_vars[f"M{i}"].set(stan)
-            var_pol.set(stan)
-            var_pld.set(stan)
+        tk.Label(ramka_top, text="Widoczność:").grid(row=0, column=2, padx=5, pady=5, sticky=tk.E)
+        combo_polkula = ttk.Combobox(ramka_top, values=["Całe niebo", "Północna (Dec > 0°)", "Południowa (Dec < 0°)"],
+                                     state="readonly")
+        combo_polkula.set("Całe niebo")
+        combo_polkula.grid(row=0, column=3, padx=5, pady=5, sticky=tk.EW)
 
-        def przelacz_polnocne():
-            stan = var_pol.get()
-            for i in polnocne: self.dso_vars[f"M{i}"].set(stan)
-            var_wsz.set(all(self.dso_vars[f"M{i}"].get() for i in range(1, 111)))
+        polnocne = [1, 3, 5, 13, 15, 27, 29, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 44, 45, 49, 51, 52, 53, 56, 57, 58,
+                    59, 60, 61, 63, 64, 65, 66, 67, 71, 74, 76, 78, 81, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 94, 95,
+                    96, 97, 98, 99, 100, 101, 102, 103, 105, 106, 108, 109, 110]
+        poludniowe = [2, 4, 6, 7, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 30, 41, 42, 43,
+                      46, 47, 48, 50, 54, 55, 62, 68, 69, 70, 72, 73, 75, 77, 79, 80, 83, 93, 104, 107]
 
-        def przelacz_poludniowe():
-            stan = var_pld.get()
-            for i in poludniowe: self.dso_vars[f"M{i}"].set(stan)
-            var_wsz.set(all(self.dso_vars[f"M{i}"].get() for i in range(1, 111)))
+        typy_dso = {
+            "Wszystkie": list(range(1, 111)),
+            "Galaktyki": [31, 32, 33, 49, 51, 58, 59, 60, 61, 63, 64, 65, 66, 74, 77, 81, 82, 83, 84, 85, 86, 87, 88,
+                          89, 90, 91, 94, 95, 96, 98, 99, 100, 101, 102, 104, 105, 106, 108, 109, 110],
+            "Mgławice": [1, 8, 17, 20, 27, 42, 43, 57, 76, 78, 97],
+            "Gromady Otwarte": [6, 7, 11, 16, 18, 21, 23, 24, 25, 26, 29, 34, 35, 36, 37, 38, 39, 41, 44, 45, 46, 47,
+                                48, 50, 52, 67, 93, 103],
+            "Gromady Kuliste": [2, 3, 4, 5, 9, 10, 12, 13, 14, 15, 19, 22, 28, 30, 53, 54, 55, 56, 62, 68, 69, 70, 71,
+                                72, 75, 79, 80, 92, 107],
+            "Inne": [40, 73]
+        }
 
-        cb_pol = tk.Checkbutton(ramka_top, text="Północne (Dec > 0°)", variable=var_pol, command=przelacz_polnocne, font=("Helvetica", 9, "bold"))
-        cb_pol.pack(side=tk.LEFT, expand=True)
+        polkule = {
+            "Całe niebo": list(range(1, 111)),
+            "Północna (Dec > 0°)": polnocne,
+            "Południowa (Dec < 0°)": poludniowe
+        }
 
-        cb_wsz = tk.Checkbutton(ramka_top, text="Wszystkie (M1-M110)", variable=var_wsz, command=przelacz_wszystkie, font=("Helvetica", 9, "bold"))
-        cb_wsz.pack(side=tk.LEFT, expand=True)
+        def zastosuj_filtr():
+            wybrany_typ = combo_typ.get()
+            wybrana_polkula = combo_polkula.get()
 
-        cb_pld = tk.Checkbutton(ramka_top, text="Południowe (Dec < 0°)", variable=var_pld, command=przelacz_poludniowe, font=("Helvetica", 9, "bold"))
-        cb_pld.pack(side=tk.LEFT, expand=True)
+            do_zaznaczenia = set(typy_dso[wybrany_typ]).intersection(set(polkule[wybrana_polkula]))
 
-        # ŚRODKOWA RAMKA NA PRZEWIJANE CHECKBOXY
+            for i in range(1, 111):
+                self.dso_vars[f"M{i}"].set(i in do_zaznaczenia)
+
+        def wyczysc_wszystko():
+            for i in range(1, 111):
+                self.dso_vars[f"M{i}"].set(False)
+
+        ramka_przyciski_filtry = tk.Frame(ramka_top)
+        ramka_przyciski_filtry.grid(row=1, column=0, columnspan=4, pady=5)
+
+        tk.Button(ramka_przyciski_filtry, text="Zaznacz", command=zastosuj_filtr, bg="#2196F3", fg="white",
+                  font=("Helvetica", 9, "bold")).pack(side=tk.LEFT, padx=10)
+        tk.Button(ramka_przyciski_filtry, text="Odznacz wszystko", command=wyczysc_wszystko).pack(side=tk.LEFT, padx=10)
+
         ramka_srodek = tk.Frame(ramka_glowna)
         ramka_srodek.pack(fill=tk.BOTH, expand=True)
 
-        płótno = tk.Canvas(ramka_srodek)
-        suwak = ttk.Scrollbar(ramka_srodek, orient="vertical", command=płótno.yview)
-        ramka_przewijana = tk.Frame(płótno)
+        plotno = tk.Canvas(ramka_srodek)
+        suwak_y = ttk.Scrollbar(ramka_srodek, orient="vertical", command=plotno.yview)
+        suwak_x = ttk.Scrollbar(ramka_srodek, orient="horizontal", command=plotno.xview)
 
-        ramka_przewijana.bind("<Configure>", lambda e: płótno.configure(scrollregion=płótno.bbox("all")))
-        płótno.create_window((0, 0), window=ramka_przewijana, anchor="nw")
-        płótno.configure(yscrollcommand=suwak.set)
+        ramka_przewijana = tk.Frame(plotno)
 
-        płótno.pack(side="left", fill="both", expand=True)
-        suwak.pack(side="right", fill="y")
+        ramka_przewijana.bind("<Configure>", lambda e: plotno.configure(scrollregion=plotno.bbox("all")))
+        plotno.create_window((0, 0), window=ramka_przewijana, anchor="nw")
+        plotno.configure(yscrollcommand=suwak_y.set, xscrollcommand=suwak_x.set)
 
-        # GENEROWANIE SIATKI CHECKBOXÓW
-        def zaktualizuj_master_checkboxy():
-            var_pol.set(all(self.dso_vars[f"M{i}"].get() for i in polnocne))
-            var_pld.set(all(self.dso_vars[f"M{i}"].get() for i in poludniowe))
-            var_wsz.set(all(self.dso_vars[f"M{i}"].get() for i in range(1, 111)))
+        suwak_x.pack(side="bottom", fill="x")
+        suwak_y.pack(side="right", fill="y")
+        plotno.pack(side="left", fill="both", expand=True)
 
         for i in range(1, 111):
-            cb = tk.Checkbutton(ramka_przewijana, text=f"M{i}", variable=self.dso_vars[f"M{i}"], command=zaktualizuj_master_checkboxy)
+            cb = tk.Checkbutton(ramka_przewijana, text=f"M{i}", variable=self.dso_vars[f"M{i}"])
             cb.grid(row=(i - 1) // 11, column=(i - 1) % 11, sticky="w", padx=8, pady=5)
 
-        # ZATWIERDZENIE
         def zatwierdz_i_zamknij():
             self.lbl_dso_info.config(text=f"Wybrano obiektów: {sum(1 for v in self.dso_vars.values() if v.get())}")
             okno.destroy()
 
-        tk.Button(okno, text="Zapisz i Zamknij", command=zatwierdz_i_zamknij, bg="#4CAF50", fg="white",
-                  font=("Helvetica", 10, "bold")).pack(fill=tk.X, padx=20, pady=15)
+        ramka_przyciski = tk.Frame(okno)
+        ramka_przyciski.pack(fill=tk.X, padx=20, pady=15)
+
+        tk.Button(ramka_przyciski, text="Przeglądaj Katalog (Opisy i Zdjęcia)",
+                  command=lambda: self.otworz_katalog_dso(okno),
+                  bg="#FF9800", fg="white", font=("Helvetica", 10, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True,
+                                                                                 padx=(0, 10))
+
+        tk.Button(ramka_przyciski, text="Zapisz i Zamknij", command=zatwierdz_i_zamknij,
+                  bg="#4CAF50", fg="white", font=("Helvetica", 10, "bold")).pack(side=tk.RIGHT, fill=tk.X, expand=True,
+                                                                                 padx=(10, 0))
 
     def ustaw_punkt_z_mapy(self, coords):
         lat, lon = coords
@@ -269,17 +412,98 @@ class StartPanel(tk.Frame):
         try:
             r = requests.get(f"https://api.open-elevation.com/api/v1/lookup?locations={lat},{lon}", timeout=5)
             self.entry_elev.delete(0, tk.END)
-            self.entry_elev.insert(0, str(float(r.json()['results'][0]['elevation'])) if r.status_code == 200 else "100.0")
+            self.entry_elev.insert(0,
+                                   str(float(r.json()['results'][0]['elevation'])) if r.status_code == 200 else "100.0")
         except:
             self.entry_elev.delete(0, tk.END)
             self.entry_elev.insert(0, "100.0")
+
+    def wczytaj_ustawienia(self):
+        if not os.path.exists("ustawienia.json"):
+            return
+        try:
+            with open("ustawienia.json", "r", encoding="utf-8") as f:
+                dane = json.load(f)
+
+            if "lat" in dane:
+                self.entry_lat.delete(0, tk.END)
+                self.entry_lat.insert(0, dane["lat"])
+            if "lon" in dane:
+                self.entry_lon.delete(0, tk.END)
+                self.entry_lon.insert(0, dane["lon"])
+            if "elev" in dane:
+                self.entry_elev.delete(0, tk.END)
+                self.entry_elev.insert(0, dane["elev"])
+            if "timezone" in dane:
+                self.lbl_strefa.config(text=dane["timezone"])
+
+            if "zjawiska" in dane:
+                for klucz, wartosc in dane["zjawiska"].items():
+                    if klucz in self.zjawiska_vars:
+                        self.zjawiska_vars[klucz].set(wartosc)
+
+            if "dso" in dane:
+                for klucz, wartosc in dane["dso"].items():
+                    if klucz in self.dso_vars:
+                        self.dso_vars[klucz].set(wartosc)
+                if hasattr(self, 'lbl_dso_info'):
+                    self.lbl_dso_info.config(
+                        text=f"Wybrano obiektów: {sum(1 for v in self.dso_vars.values() if v.get())}")
+
+            if "orby" in dane:
+                def wstaw_orb(pole, wartosc):
+                    pole.delete(0, tk.END)
+                    pole.insert(0, str(wartosc))
+
+                orby = dane["orby"]
+                if "Koniunkcja" in orby: wstaw_orb(self.orb_kon, orby["Koniunkcja"])
+                if "Sekstyl" in orby: wstaw_orb(self.orb_sek, orby["Sekstyl"])
+                if "Kwadratura" in orby: wstaw_orb(self.orb_kwa, orby["Kwadratura"])
+                if "Trygon" in orby: wstaw_orb(self.orb_try, orby["Trygon"])
+                if "Opozycja" in orby: wstaw_orb(self.orb_opo, orby["Opozycja"])
+
+            if "lat" in dane and "lon" in dane:
+                try:
+                    lat_f, lon_f = float(dane["lat"]), float(dane["lon"])
+                    self.mapa.set_position(lat_f, lon_f)
+                    if self.znacznik: self.znacznik.delete()
+                    self.znacznik = self.mapa.set_marker(lat_f, lon_f, text="Zaznaczone Miejsce")
+                except ValueError:
+                    pass
+
+        except Exception as e:
+            print(f"Nie udało się wczytać ustawień: {e}")
+
+    def zapisz_ustawienia(self):
+        dane_do_zapisu = {
+            "lat": self.entry_lat.get(),
+            "lon": self.entry_lon.get(),
+            "elev": self.entry_elev.get(),
+            "timezone": self.lbl_strefa.cget("text"),
+            "zjawiska": {klucz: zmienna.get() for klucz, zmienna in self.zjawiska_vars.items()},
+            "dso": {klucz: zmienna.get() for klucz, zmienna in self.dso_vars.items()},
+            "orby": {
+                "Koniunkcja": self.orb_kon.get(),
+                "Sekstyl": self.orb_sek.get(),
+                "Kwadratura": self.orb_kwa.get(),
+                "Trygon": self.orb_try.get(),
+                "Opozycja": self.orb_opo.get()
+            }
+        }
+        try:
+            with open("ustawienia.json", "w", encoding="utf-8") as f:
+                json.dump(dane_do_zapisu, f, indent=4)
+        except Exception as e:
+            print(f"Nie udało się zapisać ustawień: {e}")
 
     def zbierz_i_wyslij(self):
         try:
             aktywna_zakladka = self.notebook.index(self.notebook.select())
             tryb = "efemerydy" if aktywna_zakladka == 0 else "kosmogram"
 
-            rok, miesiac, dzien = map(int, self.entry_date.get().split("-"))
+            data_start_str = self.entry_date.get()
+            rok, miesiac, dzien = map(int, data_start_str.split("-"))
+
             try:
                 okienko_val = float(self.entry_okienko.get().replace(',', '.'))
             except ValueError:
@@ -293,8 +517,14 @@ class StartPanel(tk.Frame):
             zjawiska_konf = {k: v.get() for k, v in self.zjawiska_vars.items()}
 
             def bezpieczny_float(val, domyslna):
-                try: return float(val.replace(',', '.'))
-                except ValueError: return domyslna
+                try:
+                    return float(val.replace(',', '.'))
+                except ValueError:
+                    return domyslna
+
+            godzina = int(self.spin_godz.get())
+            minuta = int(self.spin_min.get())
+            urodz_czas_skladany = f"{godzina:02d}:{minuta:02d}"
 
             konfiguracja = {
                 "tryb": tryb,
@@ -309,7 +539,7 @@ class StartPanel(tk.Frame):
                 "obiekty_dso": [n for n, v in self.dso_vars.items() if v.get()],
                 "zjawiska": zjawiska_konf,
                 "urodz_data": self.entry_urodz_data.get(),
-                "urodz_czas": self.entry_urodz_czas.get(),
+                "urodz_czas": urodz_czas_skladany,
                 "sys_domow": self.combo_domy.get(),
                 "orby": {
                     "Koniunkcja": bezpieczny_float(self.orb_kon.get(), 8.0),
@@ -320,6 +550,7 @@ class StartPanel(tk.Frame):
                 }
             }
 
+            self.zapisz_ustawienia()
             self.on_start_callback(konfiguracja)
 
         except Exception as e:

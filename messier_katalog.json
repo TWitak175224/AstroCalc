@@ -1,0 +1,12 @@
+{
+    "M1": {
+        "nazwa": "Mgławica Krab",
+        "opis": "Pozostałość po supernowej w gwiazdozbiorze Byka...",
+        "zdjecie": "sciezka/do/m1.png"
+    },
+    "M31": {
+        "nazwa": "Galaktyka Andromedy",
+        "opis": "Najbliższa nam duża galaktyka spiralna...",
+        "zdjecie": "sciezka/do/m31.png"
+    }
+}
