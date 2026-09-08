@@ -1,7 +1,9 @@
 {
-  "tytul": "Instrukcja: Kosmogram",
+  "tytul": "Instrukcja: Ustawienia Kosmogramu",
   "sekcje": {
-    "Zakres czasowy": "Wpisz datę początkową i liczbę dni do analizy.",
-    "Krok dla planet": "Określa co ile dni wyliczana jest dokładna pozycja planet."
+    "Dane Urodzeniowe": "Wprowadź datę korzystając z ikony kalendarza oraz ustal godzinę za pomocą liczników (GG:MM). Precyzyjny czas jest kluczowy do prawidłowego wyliczenia Ascendentu i wierzchołków domów.",
+    "System domów": "Wybierz metodę podziału sfery niebieskiej na 12 sektorów astrologicznych. Najczęściej stosowanym systemem jest Placidus. Dla skrajnych szerokości geograficznych (np. na dalekiej północy) zaleca się system domów równych (Equal).",
+    "Tolerancje Aspektów (Orby)": "Wartości podane w stopniach [°], które określają, o ile rzeczywisty kąt między dwiema planetami może różnić się od idealnego aspektu (np. 120° dla trygonu), aby program nadal uznał to połączenie za aktywne.",
+    "Miejsce Urodzenia": "Zlokalizuj na mapie miasto urodzenia i kliknij Prawym Przyciskiem Myszy, aby ustawić współrzędne. Moduł silnika czasowego automatycznie uwzględni odpowiednie przesunięcia strefowe UTC."
   }
 }

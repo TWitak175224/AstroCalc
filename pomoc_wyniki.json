@@ -1,0 +1,9 @@
+{
+  "tytul": "Instrukcja: Interpretacja Wyników",
+  "sekcje": {
+    "Kalendarium Zjawisk": "Chronologiczny spis wydarzeń astronomicznych na niebie (fazy Księżyca, koniunkcje, zaćmienia, punkty stacjonarne). Wszystkie czasy są automatycznie przeliczone na lokalną strefę czasową obserwatora wybraną na mapie.",
+    "Tabele Efemeryd": "Szczegółowe współrzędne planet na dany dzień. RA/Dec (Rektascensja i Deklinacja) służą do odnajdywania obiektów na klasycznych mapach nieba lub programowania montaży GoTo. Az/Alt (Azymut i Wysokość) określają fizyczne położenie obiektu względem Twojego lokalnego horyzontu.",
+    "Tabela Obiektów DSO": "Zestawienie wybranych mgławic, galaktyk i gromad z Katalogu Messiera. Raport podaje godziny ich najwyższego położenia na niebie (górowania) oraz maksymalną osiąganą wysokość, co ułatwia zaplanowanie najostrzejszych kadrów w astrofotografii.",
+    "Astrologiczny Kosmogram": "Tabela i wykres przedstawiające pozycje planet w znakach zodiaku oraz systemie domów (np. Placidusa). Tabela aspektów (złączenia, trygony, kwadratury) analizuje powiązania kątowe między obiektami, uwzględniając zdefiniowane w ustawieniach marginesy błędu (orby)."
+  }
+}

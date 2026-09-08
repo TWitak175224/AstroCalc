@@ -1,12 +1,552 @@
 {
     "M1": {
         "nazwa": "Mgławica Krab",
-        "opis": "Pozostałość po supernowej w gwiazdozbiorze Byka...",
-        "zdjecie": "sciezka/do/m1.png"
+        "opis": "Pozostałość po supernowej w gwiazdozbiorze Byka.",
+        "zdjecie": "messier_zdj/m1.png"
+    },
+    "M2": {
+        "nazwa": "Gromada Wodnika",
+        "opis": "Jasna gromada kulista w gwiazdozbiorze Wodnika.",
+        "zdjecie": "messier_zdj/m2.png"
+    },
+    "M3": {
+        "nazwa": "Gromada Psów Gończych",
+        "opis": "Jedna z największych i najjaśniejszych gromad kulistych, licząca około pół miliona gwiazd.",
+        "zdjecie": "messier_zdj/m3.png"
+    },
+    "M4": {
+        "nazwa": "Gromada w Skorpionie",
+        "opis": "Gromada kulista w Skorpionie, jedna z najbliższych Ziemi.",
+        "zdjecie": "messier_zdj/m4.png"
+    },
+    "M5": {
+        "nazwa": "Gromada w Wężu",
+        "opis": "Bardzo gęsta gromada kulista w gwiazdozbiorze Węża.",
+        "zdjecie": "messier_zdj/m5.png"
+    },
+    "M6": {
+        "nazwa": "Gromada Motyl",
+        "opis": "Gromada otwarta w gwiazdozbiorze Skorpiona, przypominająca kształtem motyla.",
+        "zdjecie": "messier_zdj/m6.png"
+    },
+    "M7": {
+        "nazwa": "Gromada Ptolemeusza",
+        "opis": "Duża i jasna gromada otwarta w Skorpionie, znana od starożytności.",
+        "zdjecie": "messier_zdj/m7.png"
+    },
+    "M8": {
+        "nazwa": "Mgławica Laguna",
+        "opis": "Ogromna mgławica emisyjna i obszar H II w Strzelcu.",
+        "zdjecie": "messier_zdj/m8.png"
+    },
+    "M9": {
+        "nazwa": "Gromada kulista M9",
+        "opis": "Gromada kulista w gwiazdozbiorze Wężownika.",
+        "zdjecie": "messier_zdj/m9.png"
+    },
+    "M10": {
+        "nazwa": "Gromada kulista M10",
+        "opis": "Jasna gromada kulista położona blisko środka Wężownika.",
+        "zdjecie": "messier_zdj/m10.png"
+    },
+    "M11": {
+        "nazwa": "Gromada Dzika Kaczka",
+        "opis": "Bogata i gęsta gromada otwarta w gwiazdozbiorze Tarczy.",
+        "zdjecie": "messier_zdj/m11.png"
+    },
+    "M12": {
+        "nazwa": "Gromada kulista M12",
+        "opis": "Słabo skoncentrowana gromada kulista w Wężowniku.",
+        "zdjecie": "messier_zdj/m12.png"
+    },
+    "M13": {
+        "nazwa": "Wielka Gromada w Herkulesie",
+        "opis": "Najbardziej znana gromada kulista północnego nieba.",
+        "zdjecie": "messier_zdj/m13.png"
+    },
+    "M14": {
+        "nazwa": "Gromada kulista M14",
+        "opis": "Rozległa, słabiej widoczna gromada kulista w Wężowniku.",
+        "zdjecie": "messier_zdj/m14.png"
+    },
+    "M15": {
+        "nazwa": "Gromada w Pegazie",
+        "opis": "Gromada kulista o jednym z najgęstszych jąder, z rzadką mgławicą planetarną wewnątrz.",
+        "zdjecie": "messier_zdj/m15.png"
+    },
+    "M16": {
+        "nazwa": "Mgławica Orzeł",
+        "opis": "Gromada otwarta otoczona mgławicą, znana z Filarów Stworzenia.",
+        "zdjecie": "messier_zdj/m16.png"
+    },
+    "M17": {
+        "nazwa": "Mgławica Omega",
+        "opis": "Obszar formowania się nowych gwiazd w Strzelcu, znany też jako Mgławica Łabędź.",
+        "zdjecie": "messier_zdj/m17.png"
+    },
+    "M18": {
+        "nazwa": "Czarny Łabędź",
+        "opis": "Niewielka gromada otwarta w gwiazdozbiorze Strzelca.",
+        "zdjecie": "messier_zdj/m18.png"
+    },
+    "M19": {
+        "nazwa": "Gromada kulista M19",
+        "opis": "Owalna gromada kulista w Wężowniku, zdeformowana przez siły pływowe Galaktyki.",
+        "zdjecie": "messier_zdj/m19.png"
+    },
+    "M20": {
+        "nazwa": "Mgławica Trójlistna Koniczyna",
+        "opis": "Mgławica emisyjno-refleksyjna podzielona ciemnymi pasmami pyłu (Strzelec).",
+        "zdjecie": "messier_zdj/m20.png"
+    },
+    "M21": {
+        "nazwa": "Gromada otwarta M21",
+        "opis": "Młoda gromada otwarta gwiazd w gwiazdozbiorze Strzelca.",
+        "zdjecie": "messier_zdj/m21.png"
+    },
+    "M22": {
+        "nazwa": "Gromada kulista M22",
+        "opis": "Bardzo jasna gromada kulista w Strzelcu, jedna z pierwszych odkrytych.",
+        "zdjecie": "messier_zdj/m22.png"
+    },
+    "M23": {
+        "nazwa": "Gromada otwarta M23",
+        "opis": "Duża, luźna gromada otwarta w Strzelcu.",
+        "zdjecie": "messier_zdj/m23.png"
+    },
+    "M24": {
+        "nazwa": "Chmura Gwiazd w Strzelcu",
+        "opis": "Fragment ramienia spiralnego Drogi Mlecznej, wyjątkowo bogaty w gwiazdy.",
+        "zdjecie": "messier_zdj/m24.png"
+    },
+    "M25": {
+        "nazwa": "Gromada otwarta M25",
+        "opis": "Jasna gromada otwarta widoczna w Strzelcu.",
+        "zdjecie": "messier_zdj/m25.png"
+    },
+    "M26": {
+        "nazwa": "Gromada otwarta M26",
+        "opis": "Zwarta gromada otwarta położona w gwiazdozbiorze Tarczy.",
+        "zdjecie": "messier_zdj/m26.png"
+    },
+    "M27": {
+        "nazwa": "Mgławica Hantle",
+        "opis": "Pierwsza odkryta mgławica planetarna, wyraźny kształt klepsydry w Lisku.",
+        "zdjecie": "messier_zdj/m27.png"
+    },
+    "M28": {
+        "nazwa": "Gromada kulista M28",
+        "opis": "Niewielka gromada kulista w pobliżu gwiazdy Kaus Borealis w Strzelcu.",
+        "zdjecie": "messier_zdj/m28.png"
+    },
+    "M29": {
+        "nazwa": "Wieża Chłodnicza",
+        "opis": "Mała, ale jasna gromada otwarta w gwiazdozbiorze Łabędzia.",
+        "zdjecie": "messier_zdj/m29.png"
+    },
+    "M30": {
+        "nazwa": "Gromada kulista M30",
+        "opis": "Gęsta gromada kulista z procesem zapadania się jądra w Koziorożcu.",
+        "zdjecie": "messier_zdj/m30.png"
     },
     "M31": {
         "nazwa": "Galaktyka Andromedy",
-        "opis": "Najbliższa nam duża galaktyka spiralna...",
-        "zdjecie": "sciezka/do/m31.png"
+        "opis": "Największa galaktyka Grupy Lokalnej, sąsiadka naszej Drogi Mlecznej.",
+        "zdjecie": "messier_zdj/m31.png"
+    },
+    "M32": {
+        "nazwa": "Galaktyka satelitarna M32",
+        "opis": "Galaktyka karłowata eliptyczna, mniejszy satelita Galaktyki Andromedy.",
+        "zdjecie": "messier_zdj/m32.png"
+    },
+    "M33": {
+        "nazwa": "Galaktyka Trójkąta",
+        "opis": "Trzecia co do wielkości galaktyka spiralna w Grupie Lokalnej.",
+        "zdjecie": "messier_zdj/m33.png"
+    },
+    "M34": {
+        "nazwa": "Gromada otwarta M34",
+        "opis": "Jasna gromada otwarta zlokalizowana na granicy Perseusza i Andromedy.",
+        "zdjecie": "messier_zdj/m34.png"
+    },
+    "M35": {
+        "nazwa": "Gromada otwarta M35",
+        "opis": "Rozległa i gęsta gromada otwarta widoczna w Bliźniętach.",
+        "zdjecie": "messier_zdj/m35.png"
+    },
+    "M36": {
+        "nazwa": "Gromada Wiatraczek",
+        "opis": "Najmniejsza z trzech jasnych gromad otwartych w gwiazdozbiorze Woźnicy.",
+        "zdjecie": "messier_zdj/m36.png"
+    },
+    "M37": {
+        "nazwa": "Gromada otwarta M37",
+        "opis": "Najbogatsza i najgęstsza gromada otwarta w gwiazdozbiorze Woźnicy.",
+        "zdjecie": "messier_zdj/m37.png"
+    },
+    "M38": {
+        "nazwa": "Gromada Rozgwiazda",
+        "opis": "Luźna gromada otwarta o charakterystycznym kształcie krzyża w Woźnicy.",
+        "zdjecie": "messier_zdj/m38.png"
+    },
+    "M39": {
+        "nazwa": "Gromada otwarta M39",
+        "opis": "Trójkątna gromada otwarta w północno-wschodniej części Łabędzia.",
+        "zdjecie": "messier_zdj/m39.png"
+    },
+    "M40": {
+        "nazwa": "Winnecke 4",
+        "opis": "Układ dwóch słabych gwiazd w Wielkiej Niedźwiedzicy, często uznawany za błąd w katalogu.",
+        "zdjecie": "messier_zdj/m40.png"
+    },
+    "M41": {
+        "nazwa": "Gromada otwarta M41",
+        "opis": "Rozległa gromada otwarta gwiazd tuż pod Syriuszem w Wielkim Psie.",
+        "zdjecie": "messier_zdj/m41.png"
+    },
+    "M42": {
+        "nazwa": "Wielka Mgławica w Orionie",
+        "opis": "Najjaśniejsza mgławica dyfuzyjna na niebie, miejsce narodzin nowych gwiazd.",
+        "zdjecie": "messier_zdj/m42.png"
+    },
+    "M43": {
+        "nazwa": "Mgławica de Mairana",
+        "opis": "Fragment Wielkiej Mgławicy w Orionie, oddzielony ciemnym pasmem pyłu.",
+        "zdjecie": "messier_zdj/m43.png"
+    },
+    "M44": {
+        "nazwa": "Żłóbek (Praesepe)",
+        "opis": "Gromada otwarta w gwiazdozbiorze Raka, widoczna gołym okiem jako mglista plamka.",
+        "zdjecie": "messier_zdj/m44.png"
+    },
+    "M45": {
+        "nazwa": "Plejady",
+        "opis": "Najsłynniejsza gromada otwarta, nazywana również Siedmioma Siostrami (Byk).",
+        "zdjecie": "messier_zdj/m45.png"
+    },
+    "M46": {
+        "nazwa": "Gromada otwarta M46",
+        "opis": "Bogata gromada gwiazd w Rufie, na której tle widoczna jest mgławica planetarna.",
+        "zdjecie": "messier_zdj/m46.png"
+    },
+    "M47": {
+        "nazwa": "Gromada otwarta M47",
+        "opis": "Jasna, lecz rzadka gromada otwarta sąsiadująca z M46 w konstelacji Rufy.",
+        "zdjecie": "messier_zdj/m47.png"
+    },
+    "M48": {
+        "nazwa": "Gromada otwarta M48",
+        "opis": "Duża gromada otwarta leżąca na granicy gwiazdozbiorów Hydry i Jednorożca.",
+        "zdjecie": "messier_zdj/m48.png"
+    },
+    "M49": {
+        "nazwa": "Galaktyka M49",
+        "opis": "Jasna galaktyka eliptyczna należąca do Gromady w Pannie.",
+        "zdjecie": "messier_zdj/m49.png"
+    },
+    "M50": {
+        "nazwa": "Gromada W Kształcie Serca",
+        "opis": "Gromada otwarta zlokalizowana w gwiazdozbiorze Jednorożca.",
+        "zdjecie": "messier_zdj/m50.png"
+    },
+    "M51": {
+        "nazwa": "Galaktyka Wir",
+        "opis": "Spektakularna galaktyka spiralna w Psach Gończych oddziałująca z galaktyką karłowatą.",
+        "zdjecie": "messier_zdj/m51.png"
+    },
+    "M52": {
+        "nazwa": "Gromada otwarta M52",
+        "opis": "Gęsta gromada otwarta w gwiazdozbiorze Kasjopei o podłużnym kształcie.",
+        "zdjecie": "messier_zdj/m52.png"
+    },
+    "M53": {
+        "nazwa": "Gromada kulista M53",
+        "opis": "Złożona gromada kulista z jasnym jądrem w gwiazdozbiorze Warkocza Bereniki.",
+        "zdjecie": "messier_zdj/m53.png"
+    },
+    "M54": {
+        "nazwa": "Gromada kulista M54",
+        "opis": "Prawdopodobne jądro karłowatej galaktyki pochłanianej przez Drogę Mleczną (Strzelec).",
+        "zdjecie": "messier_zdj/m54.png"
+    },
+    "M55": {
+        "nazwa": "Gromada kulista M55",
+        "opis": "Luźno upakowana gromada kulista, stosunkowo duża kątowo na niebie (Strzelec).",
+        "zdjecie": "messier_zdj/m55.png"
+    },
+    "M56": {
+        "nazwa": "Gromada kulista M56",
+        "opis": "Słabsza gromada kulista w gwiazdozbiorze Lutni.",
+        "zdjecie": "messier_zdj/m56.png"
+    },
+    "M57": {
+        "nazwa": "Mgławica Pierścień",
+        "opis": "Kultowa mgławica planetarna, wyraźny obwarzanek dymu w konstelacji Lutni.",
+        "zdjecie": "messier_zdj/m57.png"
+    },
+    "M58": {
+        "nazwa": "Galaktyka spiralna M58",
+        "opis": "Duża galaktyka spiralna z poprzeczką, członek Gromady w Pannie.",
+        "zdjecie": "messier_zdj/m58.png"
+    },
+    "M59": {
+        "nazwa": "Galaktyka eliptyczna M59",
+        "opis": "Jedna z większych galaktyk eliptycznych w rdzeniu Gromady w Pannie.",
+        "zdjecie": "messier_zdj/m59.png"
+    },
+    "M60": {
+        "nazwa": "Galaktyka eliptyczna M60",
+        "opis": "Olbrzymia galaktyka eliptyczna współdziałająca z pobliską spiralną NGC 4647 (Panna).",
+        "zdjecie": "messier_zdj/m60.png"
+    },
+    "M61": {
+        "nazwa": "Galaktyka spiralna M61",
+        "opis": "Rozbudowana galaktyka spiralna ustawiona frontem do Ziemi w Pannie.",
+        "zdjecie": "messier_zdj/m61.png"
+    },
+    "M62": {
+        "nazwa": "Gromada kulista M62",
+        "opis": "Asymetryczna gromada kulista leżąca blisko centrum Drogi Mlecznej (Wężownik).",
+        "zdjecie": "messier_zdj/m62.png"
+    },
+    "M63": {
+        "nazwa": "Galaktyka Słonecznik",
+        "opis": "Galaktyka spiralna z licznymi, kłaczkowatymi ramionami w Psach Gończych.",
+        "zdjecie": "messier_zdj/m63.png"
+    },
+    "M64": {
+        "nazwa": "Galaktyka Czarne Oko",
+        "opis": "Galaktyka z charakterystycznym, absorbującym światło pasmem ciemnego pyłu w Warkoczu Bereniki.",
+        "zdjecie": "messier_zdj/m64.png"
+    },
+    "M65": {
+        "nazwa": "Galaktyka spiralna M65",
+        "opis": "Galaktyka spiralna, jeden ze składników słynnego Trypletu Lwa.",
+        "zdjecie": "messier_zdj/m65.png"
+    },
+    "M66": {
+        "nazwa": "Galaktyka spiralna M66",
+        "opis": "Największa, nieco zniekształcona galaktyka ze słynnego Trypletu Lwa.",
+        "zdjecie": "messier_zdj/m66.png"
+    },
+    "M67": {
+        "nazwa": "Gromada otwarta M67",
+        "opis": "Jedna z najstarszych gromad otwartych znanych w Drodze Mlecznej (Rak).",
+        "zdjecie": "messier_zdj/m67.png"
+    },
+    "M68": {
+        "nazwa": "Gromada kulista M68",
+        "opis": "Gromada kulista o niskiej koncentracji gwiazd leżąca w gwiazdozbiorze Hydry.",
+        "zdjecie": "messier_zdj/m68.png"
+    },
+    "M69": {
+        "nazwa": "Gromada kulista M69",
+        "opis": "Kompaktowa gromada kulista w pobliżu jądra Galaktyki (Strzelec).",
+        "zdjecie": "messier_zdj/m69.png"
+    },
+    "M70": {
+        "nazwa": "Gromada kulista M70",
+        "opis": "Słaba, niewielka gromada kulista tuż obok M69 w gwiazdozbiorze Strzelca.",
+        "zdjecie": "messier_zdj/m70.png"
+    },
+    "M71": {
+        "nazwa": "Gromada kulista M71",
+        "opis": "Rzadka gromada w gwiazdozbiorze Strzały, często mylona z otwartą.",
+        "zdjecie": "messier_zdj/m71.png"
+    },
+    "M72": {
+        "nazwa": "Gromada kulista M72",
+        "opis": "Mała i odległa gromada kulista zlokalizowana w gwiazdozbiorze Wodnika.",
+        "zdjecie": "messier_zdj/m72.png"
+    },
+    "M73": {
+        "nazwa": "Asteryzm M73",
+        "opis": "Niewielki układ czterech niezwiązanych ze sobą gwiazd w Wodniku.",
+        "zdjecie": "messier_zdj/m73.png"
+    },
+    "M74": {
+        "nazwa": "Galaktyka spiralna M74",
+        "opis": "Klasyczna galaktyka spiralna ułożona idealnie w płaszczyźnie względem Ziemi (Ryby).",
+        "zdjecie": "messier_zdj/m74.png"
+    },
+    "M75": {
+        "nazwa": "Gromada kulista M75",
+        "opis": "Gromada kulista o bardzo dużym zagęszczeniu gwiazd w centrum (Strzelec).",
+        "zdjecie": "messier_zdj/m75.png"
+    },
+    "M76": {
+        "nazwa": "Mgławica Małe Hantle",
+        "opis": "Słaba mgławica planetarna w Perseuszu, przypominająca zredukowaną wersję M27.",
+        "zdjecie": "messier_zdj/m76.png"
+    },
+    "M77": {
+        "nazwa": "Galaktyka Cetus A",
+        "opis": "Jasna galaktyka Seyferta posiadająca bardzo aktywne jądro (Wieloryb).",
+        "zdjecie": "messier_zdj/m77.png"
+    },
+    "M78": {
+        "nazwa": "Mgławica refleksyjna M78",
+        "opis": "Najjaśniejsza mgławica refleksyjna w gwiazdozbiorze Oriona.",
+        "zdjecie": "messier_zdj/m78.png"
+    },
+    "M79": {
+        "nazwa": "Gromada kulista M79",
+        "opis": "Gromada kulista umiejscowiona w niezwykłym miejscu – na antypodach jądra Galaktyki (Zając).",
+        "zdjecie": "messier_zdj/m79.png"
+    },
+    "M80": {
+        "nazwa": "Gromada kulista M80",
+        "opis": "Niezwykle gęsta gromada kulista w Skorpionie, obfita w błękitnych maruderów.",
+        "zdjecie": "messier_zdj/m80.png"
+    },
+    "M81": {
+        "nazwa": "Galaktyka Bodego",
+        "opis": "Jasna, idealna galaktyka spiralna widoczna w Wielkiej Niedźwiedzicy.",
+        "zdjecie": "messier_zdj/m81.png"
+    },
+    "M82": {
+        "nazwa": "Galaktyka Cygaro",
+        "opis": "Galaktyka gwiazdotwórcza w Wielkiej Niedźwiedzicy, oddziałująca w parze z M81.",
+        "zdjecie": "messier_zdj/m82.png"
+    },
+    "M83": {
+        "nazwa": "Południowy Wiatraczek",
+        "opis": "Jedna z najbliższych i najjaśniejszych galaktyk spiralnych z poprzeczką (Hydra).",
+        "zdjecie": "messier_zdj/m83.png"
+    },
+    "M84": {
+        "nazwa": "Galaktyka soczewkowata M84",
+        "opis": "Ważna galaktyka w Łańcuchu Markariana wewnątrz Gromady w Pannie.",
+        "zdjecie": "messier_zdj/m84.png"
+    },
+    "M85": {
+        "nazwa": "Galaktyka soczewkowata M85",
+        "opis": "Duża galaktyka eliptyczno-soczewkowata w gwiazdozbiorze Warkocza Bereniki.",
+        "zdjecie": "messier_zdj/m85.png"
+    },
+    "M86": {
+        "nazwa": "Galaktyka soczewkowata M86",
+        "opis": "Galaktyka soczewkowata o najwyższym w katalogu niebieskim przesunięciu, przybliżająca się do Ziemi (Panna).",
+        "zdjecie": "messier_zdj/m86.png"
+    },
+    "M87": {
+        "nazwa": "Galaktyka Panna A",
+        "opis": "Supermasywna galaktyka eliptyczna ze słynną supermasywną czarną dziurą wyrzucającą dżet.",
+        "zdjecie": "messier_zdj/m87.png"
+    },
+    "M88": {
+        "nazwa": "Galaktyka spiralna M88",
+        "opis": "Symetryczna galaktyka spiralna krążąca wokół centrum Gromady w Pannie.",
+        "zdjecie": "messier_zdj/m88.png"
+    },
+    "M89": {
+        "nazwa": "Galaktyka eliptyczna M89",
+        "opis": "Idealnie sferyczna galaktyka w konstelacji Panny.",
+        "zdjecie": "messier_zdj/m89.png"
+    },
+    "M90": {
+        "nazwa": "Galaktyka spiralna M90",
+        "opis": "Jasna galaktyka z ubogimi obszarami formowania gwiazd (Panna).",
+        "zdjecie": "messier_zdj/m90.png"
+    },
+    "M91": {
+        "nazwa": "Galaktyka M91",
+        "opis": "Wyraźna galaktyka spiralna z poprzeczką w gwiazdozbiorze Warkocza Bereniki.",
+        "zdjecie": "messier_zdj/m91.png"
+    },
+    "M92": {
+        "nazwa": "Gromada kulista M92",
+        "opis": "Bardzo jasna, nieco rzadsza sąsiadka M13 w gwiazdozbiorze Herkulesa.",
+        "zdjecie": "messier_zdj/m92.png"
+    },
+    "M93": {
+        "nazwa": "Gromada otwarta M93",
+        "opis": "Zwarty obiekt z przewagą gorących, niebieskich gwiazd w Rufie.",
+        "zdjecie": "messier_zdj/m93.png"
+    },
+    "M94": {
+        "nazwa": "Oko Krokodyla",
+        "opis": "Galaktyka w Psach Gończych z dwoma potężnymi pierścieniami gwiezdnymi.",
+        "zdjecie": "messier_zdj/m94.png"
+    },
+    "M95": {
+        "nazwa": "Galaktyka spiralna M95",
+        "opis": "Galaktyka spiralna z poprzeczką, jeden z celów obserwacji supernowych (Lew).",
+        "zdjecie": "messier_zdj/m95.png"
+    },
+    "M96": {
+        "nazwa": "Galaktyka spiralna M96",
+        "opis": "Asymetryczna galaktyka dominująca w grupie Lwa I.",
+        "zdjecie": "messier_zdj/m96.png"
+    },
+    "M97": {
+        "nazwa": "Mgławica Sowa",
+        "opis": "Mgławica planetarna z dwoma 'oczami' sowy, widoczna w Wielkiej Niedźwiedzicy.",
+        "zdjecie": "messier_zdj/m97.png"
+    },
+    "M98": {
+        "nazwa": "Galaktyka spiralna M98",
+        "opis": "Mocno pochylona do osi widzenia galaktyka, przypominająca igłę (Warkocz Bereniki).",
+        "zdjecie": "messier_zdj/m98.png"
+    },
+    "M99": {
+        "nazwa": "Galaktyka spiralna M99",
+        "opis": "Wyjątkowo asymetryczna galaktyka spiralna ulegająca wpływom w Gromadzie Panny.",
+        "zdjecie": "messier_zdj/m99.png"
+    },
+    "M100": {
+        "nazwa": "Galaktyka M100",
+        "opis": "Jedna z najpiękniejszych spiralnych 'grand design' w Gromadzie w Pannie.",
+        "zdjecie": "messier_zdj/m100.png"
+    },
+    "M101": {
+        "nazwa": "Galaktyka Wiatraczek",
+        "opis": "Duża i bardzo rozbudowana galaktyka spiralna w Wielkiej Niedźwiedzicy.",
+        "zdjecie": "messier_zdj/m101.png"
+    },
+    "M102": {
+        "nazwa": "Galaktyka Wrzeciono",
+        "opis": "Prawdopodobnie NGC 5866, kontrowersyjny obiekt w katalogu, kształtem przypominający soczewkę (Smok).",
+        "zdjecie": "messier_zdj/m102.png"
+    },
+    "M103": {
+        "nazwa": "Gromada otwarta M103",
+        "opis": "Kompaktowa, wachlarzowata gromada otwarta gwiazd w Kasjopei.",
+        "zdjecie": "messier_zdj/m103.png"
+    },
+    "M104": {
+        "nazwa": "Galaktyka Sombrero",
+        "opis": "Spektakularna galaktyka z wyraźnym, ciemnym pasmem pyłu i gigantycznym halo (Panna).",
+        "zdjecie": "messier_zdj/m104.png"
+    },
+    "M105": {
+        "nazwa": "Galaktyka eliptyczna M105",
+        "opis": "Najjaśniejsza galaktyka eliptyczna w Grupie M96 w gwiazdozbiorze Lwa.",
+        "zdjecie": "messier_zdj/m105.png"
+    },
+    "M106": {
+        "nazwa": "Galaktyka spiralna M106",
+        "opis": "Wielka galaktyka spiralna w Psach Gończych posiadająca dodatkowe, anomaliowe ramiona gazowe.",
+        "zdjecie": "messier_zdj/m106.png"
+    },
+    "M107": {
+        "nazwa": "Gromada kulista M107",
+        "opis": "Mało znana i luźno skupiona gromada kulista z gwiazdozbioru Wężownika.",
+        "zdjecie": "messier_zdj/m107.png"
+    },
+    "M108": {
+        "nazwa": "Galaktyka M108",
+        "opis": "Silnie zapylona galaktyka z poprzeczką, widoczna niemal z profilu (Wielka Niedźwiedzica).",
+        "zdjecie": "messier_zdj/m108.png"
+    },
+    "M109": {
+        "nazwa": "Galaktyka M109",
+        "opis": "Wyraźna galaktyka z dominującą poprzeczką, tuż przy gwieździe Phad (Wielka Niedźwiedzica).",
+        "zdjecie": "messier_zdj/m109.png"
+    },
+    "M110": {
+        "nazwa": "Galaktyka satelitarna M110",
+        "opis": "Karłowata galaktyka eliptyczna, największy towarzysz sąsiadującej Galaktyki Andromedy.",
+        "zdjecie": "messier_zdj/m110.png"
     }
 }

@@ -45,6 +45,7 @@ def sprawdz_typ_efemeryd(ephe_path=None):
         print("\n--- RAPORT DIAGNOSTYCZNY SILNIKA ---")
         if zwrocona_flaga & swe.FLG_SWIEPH:
             print("[OK] Silnik korzysta z precyzyjnych plików Swiss Ephemeris (*.se1).")
+            print(datetime.datetime.now())
         elif zwrocona_flaga & swe.FLG_MOSEPH:
             print("[OSTRZEŻENIE] Brak plików *.se1! Silnik używa wbudowanego algorytmu Moshiera.")
         elif zwrocona_flaga & swe.FLG_JPLEPH:
@@ -666,5 +667,5 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
     for jd, nazwa, detal in sorted(surowe_zjawiska, key=lambda x: x[0]):
         czas_str = _jd_to_datetime(jd).astimezone(lokalna_strefa_tz).strftime('%Y-%m-%d %H:%M')
         wyniki_kalendarium.append((czas_str, nazwa, detal))
-
+    print(datetime.datetime.now())
     return wyniki_slonce, naglowki_slonce, wyniki_planety, naglowki_planety, wyniki_kalendarium, naglowki_kalendarium, wyniki_dso, naglowki_dso

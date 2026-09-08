@@ -1,7 +1,11 @@
 {
-  "tytul": "Instrukcja: Efemerydy",
+  "tytul": "Instrukcja: Kalendarium i Efemerydy",
   "sekcje": {
-    "Zakres czasowy": "Wpisz datę początkową i liczbę dni do analizy.",
-    "Krok dla planet": "Określa co ile dni wyliczana jest dokładna pozycja planet."
+    "Zakres Czasowy": "Wybierz datę początkową za pomocą przycisku kalendarza oraz wpisz liczbę dni do analizy. Raport zostanie wygenerowany od podanej daty w przód.",
+    "Krok dla planet": "Zjawiska i efemerydy słoneczno-księżycowe liczone są codziennie. Ten parametr określa, co ile dni w tabeli będą pojawiać się dokładne czasy wschodów, górowań i zachodów dla pozostałych planet (np. wartość '2' oznacza wpis co drugi dzień).",
+    "Minimalna koniunkcja [°]": "Maksymalna odległość kątowa między dwoma obiektami sfery niebieskiej, przy której program uzna zdarzenie za koniunkcję (złączenie). Domyślna i optymalna wartość wizualna to 5.0 stopni.",
+    "Wybór Zjawisk": "Filtry pozwalające dostosować końcowe Kalendarium Zjawisk. Odznacz wybrane opcje, aby pominąć w raporcie zaćmienia, roje meteorów, punkty stacjonarne (początek i koniec retrogradacji) czy zakrycia.",
+    "Katalog Messiera (DSO)": "Moduł umożliwiający dodanie obiektów głębokiego nieba do tabel efemeryd. W oknie wyboru znajdziesz szybkie filtry (pozwalające zaznaczyć np. tylko galaktyki widoczne na półkuli północnej) oraz interaktywny katalog ze zdjęciami i opisami.",
+    "Lokalizacja i Mapa": "Kliknij Prawym Przyciskiem Myszy na mapie po prawej stronie, aby precyzyjnie ustawić punkt obserwacji. Program użyje zewnętrznego API, aby automatycznie pobrać wysokość nad poziomem morza oraz odpowiednią strefę czasową."
   }
 }
