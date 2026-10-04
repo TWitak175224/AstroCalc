@@ -1,8 +1,16 @@
+"""
+Moduł odpowiedzialny za wyświetlanie oraz eksportowanie wygenerowanych danych astronomicznych.
+Tworzy dynamiczne zakładki w interfejsie podzielone na miesiące i lata.
+Oferuje eksport danych do czytelnego arkusza kalkulacyjnego (CSV)
+oraz sformatowanego dokumentu (PDF) za pomocą biblioteki ReportLab.
+"""
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import csv
 from datetime import datetime
 
+# Próba załadowania zewnętrznej biblioteki do generowania plików PDF
 try:
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
@@ -18,23 +26,32 @@ except ImportError:
 
 
 class PanelWynikow(tk.Frame):
+    """
+    Panel interfejsu graficznego wyświetlający wyniki efemeryd w postaci tabelarycznej.
+    Grupując dane w widoku wielozakładkowym (Notebook), ułatwia nawigację po
+    obszernych raportach rozciągających się na miesiące lub lata.
+    """
+
     def __init__(self, parent, on_back_callback):
         super().__init__(parent)
         self.on_back_callback = on_back_callback
 
-        self.w_s, self.n_s = [], []
-        self.w_p, self.n_p = [], []
-        self.w_k, self.n_k = [], []
-        self.w_dso, self.n_dso = [], []
+        # Puste bufory przechowujące tabele (wiersze i nagłówki) otrzymane z silnika
+        self.w_s, self.n_s = [], []  # Słońce i Księżyc
+        self.w_p, self.n_p = [], []  # Planety
+        self.w_k, self.n_k = [], []  # Kalendarium Zjawisk
+        self.w_dso, self.n_dso = [], []  # Obiekty Głebokiego Nieba
         self.config_dane = None
 
+        # Słownik ułatwiający nazywanie zakładek i nagłówków w PDF/CSV
         self.miesiace_nazwy = ["", "STYCZEŃ", "LUTY", "MARZEC", "KWIECIEŃ", "MAJ", "CZERWIEC",
                                "LIPIEC", "SIERPIEŃ", "WRZESIEŃ", "PAŹDZIERNIK", "LISTOPAD", "GRUDZIEŃ"]
 
         self.setup_ui()
 
     def setup_ui(self):
-        # Zwiększenie wewnętrznego odstępu (paddingu) nagłówków, by zmieścić nową linię
+        """Tworzy szkielet interfejsu panelu wyników z przyciskami eksportu oraz głównym kontenerem zakładek."""
+        # Zwiększenie wewnętrznego odstępu (paddingu) nagłówków, by zmieścić nową linię we frameworku tk
         style = ttk.Style()
         style.configure("Treeview.Heading", padding=(12, 0))
 
@@ -54,6 +71,10 @@ class PanelWynikow(tk.Frame):
         self.main_notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
     def _parsuj_rok_miesiac(self, data_str, typ):
+        """
+        Pomocnicza metoda wewnętrzna wydobywająca rok i miesiąc ze zróżnicowanych stringów tekstowych
+        (np. format rrrr-mm-dd lub dd.mm.rrrr) by umożliwić sortowanie wpisów.
+        """
         try:
             if '-' in data_str[:10]:
                 parts = data_str[:10].split('-')
@@ -68,6 +89,10 @@ class PanelWynikow(tk.Frame):
         return 0, 0
 
     def _pobierz_posortowane_miesiace(self):
+        """
+        Skanuje wszystkie posiadane wiersze ze wszystkich tabel i buduje unikalną,
+        chronologiczną listę miesięcy (Rok, Miesiąc), które potem stają się zakładkami.
+        """
         unikalne_m_y = set()
         for w in self.w_s: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 's'))
         for w in self.w_p: unikalne_m_y.add(self._parsuj_rok_miesiac(w[0], 'p'))
@@ -83,6 +108,7 @@ class PanelWynikow(tk.Frame):
         return miesiace_posortowane
 
     def stworz_tabele(self, parent):
+        """Tworzy pustą instancję Treeview (Tabeli) z wbudowanymi paskami przewijania (Scrollbars)."""
         scroll_y = ttk.Scrollbar(parent, orient=tk.VERTICAL)
         scroll_x = ttk.Scrollbar(parent, orient=tk.HORIZONTAL)
 
@@ -98,6 +124,10 @@ class PanelWynikow(tk.Frame):
         return tree
 
     def wypelnij_tabele(self, tree, naglowki, wiersze):
+        """
+        Zasila Treeview konkretnymi wierszami.
+        Wprowadza formatowanie "zebry" (naprzemienne kolory wierszy dla czytelności).
+        """
         tree.delete(*tree.get_children())
         tree["columns"] = naglowki
 
@@ -118,6 +148,11 @@ class PanelWynikow(tk.Frame):
             tree.insert("", tk.END, values=w, tags=(tag,))
 
     def zaladuj_dane(self, w_s, n_s, w_p, n_p, w_k, n_k, w_dso, n_dso, config=None):
+        """
+        Funkcja wywoływana przez Kontroler aplikacji. Akceptuje wielki ładunek danych z silnika,
+        kategoryzuje wiersze na konkretne miesiące i dynamicznie rysuje dla każdego z nich pod-zakładkę.
+        W razie wyłączenia konkretnych zjawisk w konfiguracji (np. DSO) - ukrywa daną tabelę.
+        """
         self.w_s, self.n_s = w_s, n_s
         self.w_p, self.n_p = w_p, n_p
         self.w_k, self.n_k = w_k, n_k
@@ -170,6 +205,10 @@ class PanelWynikow(tk.Frame):
                 self.wypelnij_tabele(tree_d, self.n_dso, w_dso_mc)
 
     def eksportuj_csv(self):
+        """
+        Zapisuje czyste dane (bez formatowania) do pliku CSV (oddzielanego średnikami)
+        - format natywnie wspierany i poprawnie rozpoznawany przez polskiego Microsoft Excela.
+        """
         domyslna_nazwa = "raport_astronomiczny"
         if self.w_s:
             data_od = self.w_s[0][0].replace('.', '-')
@@ -229,6 +268,11 @@ class PanelWynikow(tk.Frame):
             messagebox.showerror("Błąd", f"Nie udało się zapisać CSV: {e}")
 
     def eksportuj_pdf(self):
+        """
+        Renderuje wielostronicowy, profesjonalny dokument PDF z wyliczonymi efemerydami,
+        korzystając z zewnętrznej biblioteki ReportLab. Automatycznie dzieli tabele na bloki
+        oraz rozbija dokument na strony ze względu na miesiąc analizy.
+        """
         if not REPORTLAB_DOSTEPNY:
             messagebox.showerror("Brak biblioteki", "Zainstaluj ReportLab:\npip install reportlab")
             return
@@ -246,6 +290,7 @@ class PanelWynikow(tk.Frame):
         if not plik: return
 
         try:
+            # Wymuszenie czcionki obsługującej polskie znaki diakrytyczne. W przypadku braku - powrót do Helvetici.
             try:
                 pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
                 pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
@@ -263,6 +308,7 @@ class PanelWynikow(tk.Frame):
             styl_tytulu = styles['Heading2']
             styl_tytulu.fontName = font_bld
 
+            # Budowa niestandardowych stylów akapitowych zdefiniowanych dla dokumentu PDF
             styl_okladka_tytul = ParagraphStyle(
                 'OkladkaTytul',
                 parent=styles['Title'],
@@ -297,9 +343,11 @@ class PanelWynikow(tk.Frame):
             lat_val = self.config_dane.get("lat_dd", 0.0) if self.config_dane else 0.0
             lon_val = self.config_dane.get("lon_dd", 0.0) if self.config_dane else 0.0
 
+            # Zamiana matematycznych współrzędnych dziesiętnych na czytelne oznaczenia geograficzne
             lat_format = f"{abs(lat_val):.4f}° {'N' if lat_val >= 0 else 'S'}"
             lon_format = f"{abs(lon_val):.4f}° {'E' if lon_val >= 0 else 'W'}"
 
+            # Generowanie Strony Tytułowej (Odkładki)
             elementy.append(Spacer(1, 100))
             elementy.append(Paragraph("Raport Astronomiczny", styl_okladka_tytul))
             elementy.append(
@@ -310,6 +358,11 @@ class PanelWynikow(tk.Frame):
             elementy.append(PageBreak())
 
             def dodaj_tabele(naglowki, wiersze, tytul, max_kolumn=6):
+                """
+                Dynamicznie buduje obiekt ReportLab Table. Jeśli tabela dla wszystkich planet
+                nie mieści się na stronie poziomego A4, ucina ją (porcjuje), wstawiając w dokumencie
+                np. 'Planety (cz. 1)', a potem 'Planety (cz. 2)'.
+                """
                 if not naglowki or not wiersze: return
 
                 def zrob_tabele(dane):
@@ -328,10 +381,12 @@ class PanelWynikow(tk.Frame):
                     ]))
                     return t
 
+                # Tabela na tyle wąska, że można wrzucić ją w jednym przebiegu
                 if len(naglowki) <= max_kolumn + 1:
                     elementy.append(Paragraph(tytul, styl_tytulu))
                     elementy.append(zrob_tabele([naglowki] + wiersze))
                     elementy.append(Spacer(1, 20))
+                # Tabela za szeroka (np. wybrane dużo DSO) - rozbijamy ją zostawiając 'Datę' w każdej paczce
                 else:
                     for i in range(1, len(naglowki), max_kolumn):
                         frag_naglowkow = [naglowki[0]] + naglowki[i:i + max_kolumn]
@@ -344,6 +399,7 @@ class PanelWynikow(tk.Frame):
 
             miesiace_posortowane = self._pobierz_posortowane_miesiace()
 
+            # Pętla przez poszczególne miesiące zlecająca rysowanie sekwencyjne
             for index, (rok, miesiac) in enumerate(miesiace_posortowane):
                 if index > 0:
                     elementy.append(PageBreak())
@@ -361,6 +417,7 @@ class PanelWynikow(tk.Frame):
                 if w_k_mc: dodaj_tabele(self.n_k, w_k_mc, "Kalendarium Zjawisk", max_kolumn=10)
                 if w_dso_mc: dodaj_tabele(self.n_dso, w_dso_mc, "Katalog DSO", max_kolumn=8)
 
+            # Ostateczne wygenerowanie i zapis dokumentu PDF na dysku
             doc.title = "Raport Astronomiczny"
             doc.author = "Aplikator Astronomiczny"
 

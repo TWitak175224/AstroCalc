@@ -1,3 +1,10 @@
+"""
+Moduł silnika astronomicznego (EphemerisEngine) wykorzystujący bibliotekę pyswisseph.
+Odpowiada za obliczanie efemeryd Słońca, Księżyca, planet, obiektów DSO oraz generowanie
+kalendarium zjawisk astronomicznych (zaćmienia, koniunkcje, ekstrema) dla zadanej lokalizacji.
+Zaimplementowano optymalizację algorytmiczną O(N) ze zintegrowanym mikroskanowaniem.
+"""
+
 import datetime
 import os
 import math
@@ -7,7 +14,13 @@ import swisseph as swe
 
 
 def oblicz_wysokosc(jd_utc, body_id, lon, lat, flags, elev=0.0):
-    # Wymuszamy tryb topocentryczny dla dokładnych zakryć
+    """
+    Oblicza azymut oraz rzeczywistą i pozorną wysokość ciała niebieskiego nad horyzontem.
+
+    Wymusza tryb topocentryczny (FLG_TOPOCTR), niezbędny do prawidłowego wyznaczania
+    koniunkcji i zakryć przez Księżyc, uwzględniając paralaksę wynikającą z pozycji
+    obserwatora na Ziemi.
+    """
     swe.set_topo(float(lon), float(lat), elev)
     flagi_rownikowe = flags | swe.FLG_EQUATORIAL | swe.FLG_TOPOCTR
 
@@ -35,6 +48,10 @@ def oblicz_wysokosc(jd_utc, body_id, lon, lat, flags, elev=0.0):
 
 
 def sprawdz_typ_efemeryd(ephe_path=None):
+    """
+    Diagnostyka silnika weryfikująca poprawność załadowania plików ephemeris (*.se1).
+    W przypadku braku plików, silnik awaryjnie uruchamia wbudowany algorytm Moshiera.
+    """
     obecny_czas = datetime.datetime.now(datetime.timezone.utc)
     dziesietna_godzina = obecny_czas.hour + (obecny_czas.minute / 60.0) + (obecny_czas.second / 3600.0)
     jd_test = swe.julday(obecny_czas.year, obecny_czas.month, obecny_czas.day, dziesietna_godzina)
@@ -45,7 +62,6 @@ def sprawdz_typ_efemeryd(ephe_path=None):
         print("\n--- RAPORT DIAGNOSTYCZNY SILNIKA ---")
         if zwrocona_flaga & swe.FLG_SWIEPH:
             print("[OK] Silnik korzysta z precyzyjnych plików Swiss Ephemeris (*.se1).")
-            print(datetime.datetime.now())
         elif zwrocona_flaga & swe.FLG_MOSEPH:
             print("[OSTRZEŻENIE] Brak plików *.se1! Silnik używa wbudowanego algorytmu Moshiera.")
         elif zwrocona_flaga & swe.FLG_JPLEPH:
@@ -55,6 +71,10 @@ def sprawdz_typ_efemeryd(ephe_path=None):
 
 
 def _jd_to_datetime(jd: float) -> datetime.datetime:
+    """
+    Konwertuje czas z formatu Julian Day (natywny dla pyswisseph)
+    na standardowy obiekt datetime w strefie czasowej UTC.
+    """
     year, month, day, decimal_hour = swe.revjul(jd)
     hours = int(decimal_hour)
     minutes = int((decimal_hour - hours) * 60)
@@ -64,6 +84,11 @@ def _jd_to_datetime(jd: float) -> datetime.datetime:
 
 
 def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
+    """
+    Oblicza astronomiczny świt i zmierzch metodą bisekcji (przeszukiwania binarnego).
+    Punktem odniesienia jest moment lokalnego górowania Słońca oraz kat depresji -18°.
+    Zwraca "Białe Noce", jeśli Słońce nie chowa się wystarczająco głęboko pod horyzont.
+    """
     kat_nocy_astr = -18.0
     tolerancja = 1.0 / 1440.0
 
@@ -73,6 +98,7 @@ def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
     def wysokosc_slonca(jd):
         return oblicz_wysokosc(jd, swe.SUN, lon, lat, flags)[1]
 
+    # Przeszukiwanie binarne - Świt astronomiczny
     if wysokosc_slonca(jd_polnoc_przed) > kat_nocy_astr:
         swit_str = "Białe Noce"
     else:
@@ -85,6 +111,7 @@ def oblicz_swit_zmierzch(jd_gorowanie, lon, lat, flags, tz_info):
                 b = mid
         swit_str = _jd_to_datetime((a + b) / 2.0).astimezone(tz_info).strftime('%H:%M')
 
+    # Przeszukiwanie binarne - Zmierzch astronomiczny
     if wysokosc_slonca(jd_polnoc_po) > kat_nocy_astr:
         zmierzch_str = "Białe Noce"
     else:
@@ -114,10 +141,15 @@ class EphemerisEngine:
         }
 
     def get_polish_name(self, body_id: int) -> str | None:
+        """Pobiera spolszczoną nazwę ciała niebieskiego ze słownika."""
         return self.polish_names.get(body_id, swe.get_planet_name(body_id))
 
     def calculate_rise_set(self, date_utc: datetime.datetime, lat: float, lon: float, height: float,
                            body_id: int = swe.SUN):
+        """
+        Główna funkcja wyznaczająca zjawiska horyzontalne dla obiektów Układu Słonecznego.
+        Zwraca JD wschodu, zachodu oraz górowania. Chroni przed błędami, gdy zjawisko nie występuje.
+        """
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
         geopos = (float(lon), float(lat), height)
@@ -136,6 +168,10 @@ class EphemerisEngine:
         return {'wschod': jd_rise, 'zachod': jd_set, "gorowanie_jd": jd_transit}
 
     def calculate_dso_rise_set(self, date_utc, lat, lon, elev, starname):
+        """
+        Funkcja do analizy horyzontalnej Obiektów Głębokiego Nieba (DSO).
+        Zgodnie z dokumentacją pyswisseph przecinek (',') wymusza odczyt z katalogu gwiazd stałych.
+        """
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
         geopos = (float(lon), float(lat), float(elev))
@@ -168,6 +204,7 @@ class EphemerisEngine:
         return wyniki
 
     def get_dso_declination(self, date_utc, starname):
+        """Wylicza precyzyjną deklinację obiektu z katalogu gwiazd."""
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
         try:
@@ -177,12 +214,14 @@ class EphemerisEngine:
             return None
 
     def pobierz_odleglosc(self, date_utc: datetime.datetime, body_id: int):
+        """Pobiera dystans od obserwatora w jednostkach astronomicznych (AU)."""
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
         coords, _ = swe.calc_ut(jd_utc, body_id, self.flags)
         return coords[2]
 
     def oblicz_faze_ksiezyca(self, date_utc: datetime.datetime):
+        """Oblicza ilumiację (procentowe oświetlenie tarczy) Księżyca (0-100%)."""
         decimal_hour = date_utc.hour + (date_utc.minute / 60.0) + (date_utc.second / 3600.0)
         jd_utc = swe.julday(date_utc.year, date_utc.month, date_utc.day, decimal_hour)
         try:
@@ -192,7 +231,16 @@ class EphemerisEngine:
             print(f"Błąd silnika przy obliczaniu fazy: {e}")
             return 0.0
 
+    # =========================================================================
+    # SEKCJA: MIKROSKANOWANIE (OPTYMALIZACJA WYDAJNOŚCI)
+    # Poniższe funkcje rozwiązują problem grubej siatki głównej pętli kalendarium.
+    # Uruchamiane punktowo dopiero wtedy, gdy główna pętla wykryje w swoim kroku
+    # zmianę trendu matematycznego. Gwarantuje to dokładność co do 1 minuty,
+    # zachowując algorytmiczną złożoność O(N) i zapobiegając nadmiernym obliczeniom.
+    # =========================================================================
+
     def _doprecyzuj_faze(self, jd_start, jd_end, faza_docelowa):
+        """Poszukuje dokładnej minuty zajścia jednej z głównych faz księżyca."""
         best_jd, min_diff = jd_start, 999.0
         jd, step = jd_start, 1.0 / 1440.0
         while jd <= jd_end:
@@ -206,6 +254,10 @@ class EphemerisEngine:
         return best_jd
 
     def _doprecyzuj_ekstremum(self, jd_start, jd_end, body, szukaj_maksa, to_deklinacja):
+        """
+        Wykrywa apogeum/perygeum oraz ekstrema deklinacyjne (np. dla Księżyca).
+        Zwraca krotkę: JD zjawiska oraz wyliczoną w tym ułamku sekundy wartość fizyczną.
+        """
         best_jd = jd_start
         best_val = -999999999 if szukaj_maksa else 999999999
         jd, step = jd_start, 1.0 / 1440.0
@@ -213,7 +265,7 @@ class EphemerisEngine:
         while jd <= jd_end:
             coords, _ = swe.calc_ut(jd, body, calc_flags)
             val = coords[1] if to_deklinacja else coords[2]
-            if body == swe.MOON and not to_deklinacja: val *= 149597870.7
+            if body == swe.MOON and not to_deklinacja: val *= 149597870.7  # Zmiana z AU na km
             if szukaj_maksa and val > best_val:
                 best_val, best_jd = val, jd
             elif not szukaj_maksa and val < best_val:
@@ -222,6 +274,7 @@ class EphemerisEngine:
         return best_jd, best_val
 
     def _doprecyzuj_slonce(self, jd_start, jd_end, faza_docelowa):
+        """Lokalizuje moment wejścia Słońca w precyzyjne kąty określające pory roku i roje meteorów."""
         best_jd, min_diff = jd_start, 999.0
         jd, step = jd_start, 1.0 / 1440.0
         while jd <= jd_end:
@@ -233,6 +286,7 @@ class EphemerisEngine:
         return best_jd
 
     def _doprecyzuj_kat_planetarny(self, jd_start, jd_end, body1, body2, docelowy_kat):
+        """Wyszukuje dokładne momenty koniunkcji z dokładnością minutową."""
         best_jd, min_diff = jd_start, 999.0
         jd, step = jd_start, 1.0 / 1440.0
         while jd <= jd_end:
@@ -248,6 +302,7 @@ class EphemerisEngine:
         return best_jd
 
     def _doprecyzuj_elongacje(self, jd_start, jd_end, body):
+        """Odnajduje szczyt wschodniej/zachodniej ucieczki (elongacji) planet wewnętrznych na sferze."""
         best_jd, max_elong, best_kierunek = jd_start, -1.0, 0
         jd, step = jd_start, 1.0 / 1440.0
         while jd <= jd_end:
@@ -260,6 +315,7 @@ class EphemerisEngine:
         return best_jd, max_elong, best_kierunek
 
     def _doprecyzuj_stacjonarna(self, jd_start, jd_end, body):
+        """Określa punkt wyhamowania prędkości obrotu kątowego, inicjujący retrogradację."""
         best_jd, min_speed = jd_start, 999.0
         jd, step = jd_start, 1.0 / 1440.0
         while jd <= jd_end:
@@ -269,6 +325,11 @@ class EphemerisEngine:
         return best_jd
 
     def znajdz_kalendarium_zjawisk(self, utc_start, dni, pozycja, tz, okienko_koniunkcji=5.0, zjawiska_konf=None):
+        """
+        Rdzeń silnika analitycznego o optymalnej złożoności O(N).
+        Wykorzystuje siatkę przesunięć dobowych, przechowując historię z "wczoraj" i "dziś".
+        Wykrycie zjawiska uruchamia odpowiednie wywołania funkcji '_doprecyzuj'.
+        """
         if zjawiska_konf is None: zjawiska_konf = {}
 
         zjawiska_jd = []
@@ -284,6 +345,7 @@ class EphemerisEngine:
             dt_utc = datetime.datetime(y, m, d, h, mnt, min(sec, 59), tzinfo=datetime.timezone.utc)
             return dt_utc.astimezone(tz).strftime('%H:%M')
 
+        # Funkcje kontroli przepływu dla wykrywania przecięć zerowych i progu
         def przekroczono_0(prv, cur):
             return (prv > 300 and cur < 60) or (prv < 60 and cur > 300)
 
@@ -319,6 +381,7 @@ class EphemerisEngine:
             "Ursydy": {"start": 265.0, "max": 270.7, "end": 274.0, "zhr": "10 (Zmienne do 50)"}
         }
 
+        # Moduł analizy zaćmień księżyca - wykorzystuje wbudowaną akcelerację 10-dniową
         if zjawiska_konf.get("fazy_zacmienia", True):
             jd_szukaj = jd_base
             while jd_szukaj <= jd_end:
@@ -417,36 +480,43 @@ class EphemerisEngine:
                 elif prev_E < 270 and E >= 270:
                     zjawiska_jd.append((self._doprecyzuj_faze(jd - step, jd, 270), "Trzecia Kwadra", ""))
 
-            hist_D_moon.append((jd, D_moon));
-            hist_D_sun.append((jd, D_sun));
+            # Historia deklinacji i odległości – umożliwia bezpieczne wykrycie szczytów i dołków
+            hist_D_moon.append((jd, D_moon))
+            hist_D_sun.append((jd, D_sun))
             hist_Dec.append((jd, Dec))
+
             if len(hist_D_moon) == 3 and zjawiska_konf.get("ekstrema", True):
+                # Perygeum i Apogeum
                 if hist_D_moon[1][1] < hist_D_moon[0][1] and hist_D_moon[1][1] < hist_D_moon[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, False, False)[0],
-                         "Perygeum Księżyca", ""))
+                    t_dok, min_dist = self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, False,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Perygeum Księżyca", f"{min_dist:,.0f} km".replace(',', ' ')))
                 elif hist_D_moon[1][1] > hist_D_moon[0][1] and hist_D_moon[1][1] > hist_D_moon[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, True, False)[0],
-                         "Apogeum Księżyca", ""))
+                    t_dok, max_dist = self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, True,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Apogeum Księżyca", f"{max_dist:,.0f} km".replace(',', ' ')))
+
+                # Peryhelium i Aphelium
                 if hist_D_sun[1][1] < hist_D_sun[0][1] and hist_D_sun[1][1] < hist_D_sun[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, False, False)[0],
-                         "Ziemia w peryhelium", ""))
+                    t_dok, min_dist = self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, False,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Ziemia w peryhelium", f"{min_dist:.4f} AU"))
                 elif hist_D_sun[1][1] > hist_D_sun[0][1] and hist_D_sun[1][1] > hist_D_sun[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, True, False)[0],
-                         "Ziemia w aphelium", ""))
+                    t_dok, max_dist = self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, True,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Ziemia w aphelium", f"{max_dist:.4f} AU"))
+
+                # Maksymalne deklinacje
                 if hist_Dec[1][1] < hist_Dec[0][1] and hist_Dec[1][1] < hist_Dec[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, False, True)[0],
-                         "Maks. deklinacja płd. Księżyca", ""))
+                    t_dok, min_dec = self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, False, True)
+                    zjawiska_jd.append((t_dok, "Księżyc: Maksymalna deklinacja S", f"{min_dec:.2f}°"))
                 elif hist_Dec[1][1] > hist_Dec[0][1] and hist_Dec[1][1] > hist_Dec[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, True, True)[0],
-                         "Maks. deklinacja płn. Księżyca", ""))
-                hist_D_moon.pop(0);
-                hist_D_sun.pop(0);
+                    t_dok, max_dec = self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, True, True)
+                    znak = "+" if max_dec > 0 else ""
+                    zjawiska_jd.append((t_dok, "Księżyc: Maksymalna deklinacja N", f"{znak}{max_dec:.2f}°"))
+
+                hist_D_moon.pop(0)
+                hist_D_sun.pop(0)
                 hist_Dec.pop(0)
 
             for p in planety_zewn + planety_wewn:
@@ -488,6 +558,7 @@ class EphemerisEngine:
                                                 f"{max_val:.1f}° | {kierunek}"))
                         hist_elong[p].pop(0)
 
+            # Skanowanie zakryć planetarnych
             if zjawiska_konf.get("zakrycia", True):
                 for i in range(len(wszystkie_ciala)):
                     for j in range(i + 1, len(wszystkie_ciala)):
@@ -526,6 +597,11 @@ class EphemerisEngine:
 
 
 def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe, data_str):
+    """
+    Formatuje wyliczone czasy wschodu, górowania i zachodu.
+    Zabezpiecza przed "kradzieżą" zjawiska z sąsiedniego dnia przez strefy czasowe
+    oraz interpretuje zjawiska stałe pod/nad horyzontem (zwracając /\\ lub \\/).
+    """
     wsch_jd = wyniki['wschod']
     gor_jd = wyniki['gorowanie_jd']
     zach_jd = wyniki['zachod']
@@ -534,7 +610,7 @@ def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe, data_
     wsch_dt = _jd_to_datetime(wsch_jd).astimezone(strefa_tz) if wsch_jd else None
     zach_dt = _jd_to_datetime(zach_jd).astimezone(strefa_tz) if zach_jd else None
 
-    # Zabezpieczenie przed "kradzieżą" zjawiska z sąsiedniego dnia
+    # Ochrona przed nadpisywaniem wydarzeń dla niewłaściwej daty
     if wsch_dt and wsch_dt.strftime('%d.%m.%Y') != data_str:
         wsch_dt = None
     if zach_dt and zach_dt.strftime('%d.%m.%Y') != data_str:
@@ -544,12 +620,11 @@ def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe, data_
     wsch_str = wsch_dt.strftime('%H:%M') if wsch_dt else None
     zach_str = zach_dt.strftime('%H:%M') if zach_dt else None
 
-    # Brak wschodu: stan na początku doby (jd_bazowe + 0.001 to okolice 00:01)
+    # Wykrywanie czy ciało znajduje się całą dobę nad/pod horyzontem
     if wsch_str is None:
         _, _, alt_start = oblicz_wysokosc(jd_bazowe + 0.001, cialo, lon, lat, flags)
         wsch_str = "/\\" if alt_start > 0 else "\\/"
 
-    # Brak zachodu: stan na końcu doby (jd_bazowe + 0.999 to okolice 23:58)
     if zach_str is None:
         _, _, alt_koniec = oblicz_wysokosc(jd_bazowe + 0.999, cialo, lon, lat, flags)
         zach_str = "/\\" if alt_koniec > 0 else "\\/"
@@ -559,6 +634,10 @@ def odkoduj_zjawisko(wyniki, cialo, lon, lat, flags, strefa_tz, jd_bazowe, data_
 
 def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety, obiekty_dso, okienko_koniunkcji=5.0,
                    zjawiska_konf=None):
+    """
+    Orkiestrator zbierający i układający wszystkie dane w odpowiednich formatach.
+    Zwraca tuple przygotowane bezpośrednio pod wstrzyknięcie do kreatora tabel PDF.
+    """
     if zjawiska_konf is None: zjawiska_konf = {}
 
     engine = EphemerisEngine(ephe_path='eph_data')
@@ -590,7 +669,8 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
         current_local = start_date_local + datetime.timedelta(days=j)
         data_str = current_local.strftime('%d.%m.%Y')
         utc_time = current_local.astimezone(datetime.timezone.utc)
-        # ZMIANA TUTAJ: Wyliczamy precyzyjny Julian Day dla 00:00 czasu lokalnego
+
+        # Precyzyjny Julian Day dla 00:00 czasu lokalnego - kluczowe dla poprawnych efemeryd
         dec_hour = utc_time.hour + (utc_time.minute / 60.0) + (utc_time.second / 3600.0)
         jd_midnight = swe.julday(utc_time.year, utc_time.month, utc_time.day, dec_hour)
         wiersz_s = [data_str]
@@ -616,6 +696,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
         wiersz_s.append(f"{faza_proc:.1f} %")
         wyniki_slonce.append(tuple(wiersz_s))
 
+        # Obliczanie pozycji planet z możliwością omijania dni (optymalizacja dla krok_planety)
         if j % krok_planety == 0:
             wyniki_s_tmp = engine.calculate_rise_set(utc_time, LATITUDE, LONGITUDE, ELEV, swe.SUN)
             jd_gor = wyniki_s_tmp['gorowanie_jd']
@@ -649,7 +730,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
                             dec = engine.get_dso_declination(utc_time, dso)
                             if dec:
                                 w = z = "/\\" if (LATITUDE >= 0 and dec > 90 - LATITUDE) or (
-                                            LATITUDE < 0 and dec < -90 - LATITUDE) else "\\/"
+                                        LATITUDE < 0 and dec < -90 - LATITUDE) else "\\/"
                             else:
                                 w = z = "--:--"
                         wiersz_dso.append(f"{w or '--:--'}  {g}  {z or '--:--'}")
@@ -660,6 +741,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
     naglowki_kalendarium = ["Data i Czas", "Zjawisko Astronomiczne", "Dodatkowe Parametry"]
     utc_start_date = start_date_local.astimezone(datetime.timezone.utc)
 
+    # Wywołanie głównej funkcji kalendarium zdarzeń
     surowe_zjawiska = engine.znajdz_kalendarium_zjawisk(utc_start_date, days, pozycja, lokalna_strefa_tz,
                                                         okienko_koniunkcji, zjawiska_konf)
 
@@ -667,5 +749,6 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
     for jd, nazwa, detal in sorted(surowe_zjawiska, key=lambda x: x[0]):
         czas_str = _jd_to_datetime(jd).astimezone(lokalna_strefa_tz).strftime('%Y-%m-%d %H:%M')
         wyniki_kalendarium.append((czas_str, nazwa, detal))
-    print(datetime.datetime.now())
+
+
     return wyniki_slonce, naglowki_slonce, wyniki_planety, naglowki_planety, wyniki_kalendarium, naglowki_kalendarium, wyniki_dso, naglowki_dso
