@@ -22,6 +22,12 @@ try:
 except ImportError:
     TKCALENDAR_DOSTEPNY = False
 
+try:
+    from PIL import Image, ImageTk
+    PILLOW_DOSTEPNY = True
+except ImportError:
+    PILLOW_DOSTEPNY = False
+
 
 class StartPanel(tk.Frame):
     """
@@ -335,7 +341,7 @@ class StartPanel(tk.Frame):
         """
         okno = tk.Toplevel(parent_window)
         okno.title("Katalog Obiektów Messiera")
-        okno.geometry("800x550")
+        okno.geometry("850x700")
         okno.transient(parent_window)
 
         baza_messiera = {}
@@ -400,13 +406,24 @@ class StartPanel(tk.Frame):
 
             try:
                 if sciezka_zdjecia and os.path.exists(sciezka_zdjecia):
-                    img = tk.PhotoImage(file=sciezka_zdjecia)
+                    if PILLOW_DOSTEPNY:
+                        # Otwieramy zdjęcie przez silnik Pillow
+                        img_pil = Image.open(sciezka_zdjecia)
+                        # Automatyczne skalowanie z zachowaniem proporcji do max 200x200
+                        img_pil.thumbnail((400, 400))
+                        # Konwersja na format zrozumiały dla Tkintera
+                        img = ImageTk.PhotoImage(img_pil)
+                    else:
+                        # Ratunkowy fallback bez skalowania, jeśli Pillow nie jest zainstalowane
+                        img = tk.PhotoImage(file=sciezka_zdjecia)
+
                     lbl_zdjecie.config(image=img, text="", width=0, height=0)
                     lbl_zdjecie.image = img
                 else:
                     lbl_zdjecie.config(image="", text="[Zdjęcie niedostępne]", width=50, height=15)
-            except Exception:
-                lbl_zdjecie.config(image="", text="[Format nieobsługiwany]", width=50, height=15)
+            except Exception as e:
+                lbl_zdjecie.config(image="", text=f"[Błąd ładowania obrazu]", width=50, height=15)
+                print(f"Błąd miniatury: {e}")
 
         lista.bind("<<ListboxSelect>>", on_select)
 
