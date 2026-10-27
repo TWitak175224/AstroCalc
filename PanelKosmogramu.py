@@ -1,9 +1,22 @@
+"""
+Moduł widoku (View) dla panelu kosmogramu w aplikacji astrologicznej.
+Odpowiada za prezentację wyliczonych danych w tabelach (Treeview) oraz
+generowanie graficznej reprezentacji horoskopu (koło astrologiczne na Canvas)
+wraz z możliwością eksportu obrazu do formatu PNG.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 import math
 
 
 class PanelKosmogramu(tk.Frame):
+    """
+    Klasa interfejsu graficznego wyświetlająca wyniki obliczeń astrologicznych.
+    Zawiera trzy główne tabele (Planety, Domy, Aspekty) oraz moduł renderowania
+    wektorowego wykresu kołowego.
+    """
+
     def __init__(self, parent, on_back_callback):
         super().__init__(parent)
         self.on_back_callback = on_back_callback
@@ -15,6 +28,10 @@ class PanelKosmogramu(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Buduje układ (layout) okna, inicjalizuje tabele na dane oraz podpina
+        przyciski nawigacyjne i generujące wykres.
+        """
         lbl_tytul = tk.Label(self, text="Dane Kosmogramu", font=("Helvetica", 16, "bold"))
         lbl_tytul.pack(pady=10)
 
@@ -45,6 +62,12 @@ class PanelKosmogramu(tk.Frame):
         btn_rysuj.pack(side=tk.RIGHT, padx=10)
 
     def sortuj_kolumne(self, tree, col, reverse):
+        """
+        Uniwersalna metoda sortująca dane w tabeli (Treeview) po kliknięciu w nagłówek.
+        Automatycznie oczyszcza ciągi znaków z symboli stopni (° i ') przed
+        konwersją na typ zmiennoprzecinkowy (float), zapewniając prawidłowe
+        sortowanie matematyczne, a nie alfabetyczne.
+        """
         # Pobranie danych z kolumny do posortowania
         dane = [(tree.set(k, col), k) for k in tree.get_children('')]
 
@@ -67,6 +90,7 @@ class PanelKosmogramu(tk.Frame):
         tree.heading(col, command=lambda _col=col: self.sortuj_kolumne(tree, _col, not reverse))
 
     def stworz_tabele(self, parent, naglowki):
+        """Metoda pomocnicza generująca widget Treeview z paskiem przewijania."""
         scroll_y = ttk.Scrollbar(parent, orient=tk.VERTICAL)
         tree = ttk.Treeview(parent, yscrollcommand=scroll_y.set, show="headings")
 
@@ -83,6 +107,7 @@ class PanelKosmogramu(tk.Frame):
         return tree
 
     def zaladuj_dane(self, planety, domy, aspekty):
+        """Czyści poprzednie widoki i ładuje nowe zestawy krotek wygenerowane przez silnik."""
         self.planety_dane = planety
         self.domy_dane = domy
         self.aspekty_dane = aspekty
@@ -96,6 +121,11 @@ class PanelKosmogramu(tk.Frame):
         for a in aspekty: self.tree_aspekty.insert("", tk.END, values=a)
 
     def pokaz_wykres(self):
+        """
+        Inicjuje i renderuje wektorowy wykres (koło astrologiczne).
+        Zawiera logikę rysowania pierścieni zodiaku, oznaczania Ascendentu,
+        rysowania osi i granic domów oraz nakładania siatki aspektów.
+        """
         okno = tk.Toplevel(self)
         okno.title("Wizualizacja Kosmogramu")
         okno.geometry("820x750")
@@ -105,6 +135,7 @@ class PanelKosmogramu(tk.Frame):
         panel_zapisu.pack(side=tk.BOTTOM, fill=tk.X)
 
         def zapisz_obraz():
+            """Wykonuje zrzut wybranego obszaru płótna i zapisuje jako plik graficzny za pomocą biblioteki Pillow."""
             from tkinter import filedialog, messagebox
             try:
                 from PIL import ImageGrab
@@ -155,11 +186,14 @@ class PanelKosmogramu(tk.Frame):
         suwak_y.config(command=canvas.yview)
         suwak_x.config(command=canvas.xview)
 
+        # Ustawienia bazowe geometrii koła
         cx, cy = 400, 400
         r_zew = 320
         r_wew = 240
         r_planety = 200
 
+        # Poszukiwanie długości ekliptycznej Ascendentu z wyliczonych domów.
+        # W astrologii ASC to punkt referencyjny, który decyduje o rotacji całego koła.
         asc_lon = 0.0
         for d in self.domy_dane:
             if "ASC" in d[0]:
@@ -167,10 +201,16 @@ class PanelKosmogramu(tk.Frame):
                 break
 
         def lon_na_xy(lon, promien):
+            """
+            Transformacja współrzędnych biegunowych (ekliptycznych) na kartezjańskie piksele Canvas (X,Y).
+            Równanie wyrównuje układ tak, aby wartość asc_lon znalazła się idealnie po lewej
+            stronie koła (180 stopni w matematycznym układzie kątowym).
+            """
             kat_rad = math.radians(asc_lon - lon + 180)
             return cx + promien * math.cos(kat_rad), cy + promien * math.sin(kat_rad)
 
         ZNAKI = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"]
+        # Rysowanie pierścienia Znaków Zodiaku (12 równych sektorów po 30 stopni)
         for i in range(12):
             stopien_poczatku = i * 30
             x_zew, y_zew = lon_na_xy(stopien_poczatku, r_zew)
@@ -186,9 +226,11 @@ class PanelKosmogramu(tk.Frame):
         kordy = {}
         domy_kordy = {}
 
+        # Agregacja kątów dla planet
         for p in self.planety_dane:
             kordy[p[0]] = float(p[2].replace('°', ''))
 
+        # Agregacja kątów dla głównych osi oraz wierzchołków domów
         for d in self.domy_dane:
             if not d[0]: continue
             wartosc = float(d[2].replace('°', ''))
@@ -200,6 +242,7 @@ class PanelKosmogramu(tk.Frame):
                 numer = int(d[0].replace("Dom ", ""))
                 domy_kordy[numer] = wartosc
 
+        # Rysowanie wewnętrznych linii wierzchołków (granic domów) i ich numeracji
         for i in range(1, 13):
             if i in domy_kordy:
                 lon = domy_kordy[i]
@@ -218,6 +261,7 @@ class PanelKosmogramu(tk.Frame):
                 txt_x, txt_y = lon_na_xy(mid_lon, 70)
                 canvas.create_text(txt_x, txt_y, text=str(i), font=("Helvetica", 14, "bold"), fill="gray")
 
+        # Rysowanie horyzontu (ASC - DC)
         if "Ascendent" in kordy and "Descendant" in kordy:
             x1, y1 = lon_na_xy(kordy["Ascendent"], r_wew)
             x2, y2 = lon_na_xy(kordy["Descendant"], r_wew)
@@ -225,6 +269,7 @@ class PanelKosmogramu(tk.Frame):
             canvas.create_text(x1 - 25, y1, text="ASC", fill="red", font=("Helvetica", 10, "bold"))
             canvas.create_text(x2 + 25, y2, text="DC", fill="red", font=("Helvetica", 10, "bold"))
 
+        # Rysowanie południka lokalnego (MC - IC)
         if "Medium Coeli" in kordy and "Imum Coeli" in kordy:
             x1, y1 = lon_na_xy(kordy["Medium Coeli"], r_wew)
             x2, y2 = lon_na_xy(kordy["Imum Coeli"], r_wew)
@@ -240,6 +285,7 @@ class PanelKosmogramu(tk.Frame):
             "Opozycja": "purple"
         }
 
+        # Generowanie wewnętrznej siatki aspektów (powiązań kątowych między planetami)
         for a in self.aspekty_dane:
             nazwa1, aspekt, nazwa2, orb = a
             if nazwa1 in kordy and nazwa2 in kordy:
@@ -248,6 +294,7 @@ class PanelKosmogramu(tk.Frame):
                 kolor = kolory_aspektow.get(aspekt, "gray")
                 canvas.create_line(x1, y1, x2, y2, fill=kolor, width=1)
 
+        # Rysowanie pozycji planet
         for nazwa, dlugosc in kordy.items():
             if nazwa in ["Ascendent", "Descendant", "Medium Coeli", "Imum Coeli"]:
                 continue

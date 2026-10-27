@@ -1,3 +1,10 @@
+"""
+Moduł Startowy (StartPanel) aplikacji astronomiczno-astrologicznej.
+Odpowiada za główny interfejs wejściowy, zbieranie parametrów od użytkownika
+(lokalizacja, czas, opcje filtrowania), a także za zarządzanie mapą wektorową.
+Generuje konfigurację obliczeniową delegowaną następnie do głównego kontrolera (main.py)[cite: 12].
+"""
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 import tkintermapview
@@ -15,14 +22,32 @@ try:
 except ImportError:
     TKCALENDAR_DOSTEPNY = False
 
+try:
+    from PIL import Image, ImageTk
+    PILLOW_DOSTEPNY = True
+except ImportError:
+    PILLOW_DOSTEPNY = False
+
 
 class StartPanel(tk.Frame):
+    """
+    Główna klasa widoku ustawień startowych dziedzicząca po tk.Frame.
+    Zawiera logikę obsługującą mapę topograficzną, zakładki konfiguracyjne
+    (Efemerydy i Kosmogram) oraz dynamiczny wybór obiektów z katalogu Messiera[cite: 12].
+    """
+
     def __init__(self, parent, on_start_callback):
+        """
+        Inicjuje stan początkowy, w tym zmienne sterujące checkboxami zjawisk
+        i wyborem obiektów DSO.
+        """
         super().__init__(parent)
+        # Przekazany z main.py wskaźnik na funkcję obierającą gotowy słownik z ustawieniami[cite: 12]
         self.on_start_callback = on_start_callback
         self.znacznik = None
         self.tf = TimezoneFinder()
 
+        # Inicjalizacja słowników przechowujących stany (T/F) widgetów wyboru
         self.dso_vars = {f"M{i}": tk.BooleanVar(value=False) for i in range(1, 111)}
 
         self.zjawiska_vars = {
@@ -37,6 +62,10 @@ class StartPanel(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Buduje układ graficzny interfejsu za pomocą menedżera geometrii pakowania (pack/grid).
+        Dzieli obszar na lewy panel kontrolny i prawy panel mapy[cite: 12].
+        """
         panel_lewy = tk.Frame(self, width=330)
         panel_lewy.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
         panel_lewy.pack_propagate(False)
@@ -49,6 +78,7 @@ class StartPanel(tk.Frame):
         tk.Button(panel_lewy, text="Generuj", command=self.zbierz_i_wyslij, bg="#4CAF50",
                   fg="white", font=("Helvetica", 12, "bold")).pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0), ipady=5)
 
+        # --- SEKCJA GEOGRAFICZNA ---
         ramka_geo = tk.LabelFrame(panel_lewy, text="Lokalizacja (Obserwator / Urodzenie)")
         ramka_geo.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 5))
 
@@ -86,7 +116,8 @@ class StartPanel(tk.Frame):
 
         tk.Label(ramka_czasu, text="Data startu:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
 
-        # --- Zintegrowane pole daty z przyciskiem do ładnego kalendarza ---
+        # Omijanie błędów biblioteki tkcalendar w systemie Windows poprzez
+        # umieszczenie wywołania okna kalendarza pod bezpiecznym przyciskiem[cite: 12].
         ramka_daty_efe = tk.Frame(ramka_czasu)
         ramka_daty_efe.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
 
@@ -154,7 +185,6 @@ class StartPanel(tk.Frame):
 
         tk.Label(ramka_urodzeniowa, text="Data urodzenia:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
 
-        # --- Zintegrowane pole daty w kosmogramie ---
         ramka_daty_ur = tk.Frame(ramka_urodzeniowa)
         ramka_daty_ur.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
 
@@ -216,6 +246,7 @@ class StartPanel(tk.Frame):
                   command=lambda: self.otworz_pomoc("pomoc_kosmogram.json", "Pomoc - Ustawienia Kosmogramu"),
                   bg="#9C27B0", fg="white", font=("Helvetica", 9, "bold")).pack(fill=tk.X, padx=5, pady=(10, 5))
 
+        # --- SEKCJA MAPY INTERAKTYWNEJ ---
         self.mapa = tkintermapview.TkinterMapView(panel_prawy, corner_radius=5)
         self.mapa.set_tile_server("https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", max_zoom=19)
         self.mapa.pack(fill=tk.BOTH, expand=True)
@@ -225,10 +256,11 @@ class StartPanel(tk.Frame):
                                                pass_coords=True)
         self.rysuj_siatke(co_ile_stopni=15)
 
+        # Załadowanie spersonalizowanych preferencji z dysku[cite: 12]
         self.wczytaj_ustawienia()
 
-    # --- NOWA METODA: WYSKAKUJĄCY, BEZPIECZNY KALENDARZ ---
     def otworz_kalendarz(self, pole_docelowe):
+        """Wywołuje modalne okno pop-up z kalendarzem do precyzyjnego wprowadzania daty."""
         okno_kal = tk.Toplevel(self)
         okno_kal.title("Wybierz datę")
         okno_kal.geometry("280x250")
@@ -253,6 +285,10 @@ class StartPanel(tk.Frame):
                   font=("Helvetica", 10, "bold")).pack(pady=(0, 10), padx=10, fill=tk.X)
 
     def otworz_pomoc(self, plik_json, domyslny_tytul):
+        """
+        Uniwersalny parser wczytujący na żądanie dedykowaną instrukcję z pliku JSON.
+        Formatuje zawartość do czytelnego, przewijalnego bloku tekstowego.
+        """
         okno = tk.Toplevel(self)
         okno.title(domyslny_tytul)
         okno.geometry("500x400")
@@ -292,15 +328,21 @@ class StartPanel(tk.Frame):
         txt.config(state=tk.DISABLED)
 
     def rysuj_siatke(self, co_ile_stopni=15):
+        """Nakłada na interaktywną mapę siatkę równoleżników i południków."""
         for lat in range(-75, 90, co_ile_stopni):
             self.mapa.set_path([(lat, lon) for lon in range(-180, 181, 5)], color="#808080", width=1)
         for lon in range(-180, 181, co_ile_stopni):
             self.mapa.set_path([(lat, lon) for lat in range(-85, 86, 5)], color="#808080", width=1)
 
     def otworz_katalog_dso(self, parent_window):
+        """
+        Wywołuje wewnętrzną przeglądarkę Katalogu Messiera.
+        Wczytuje z pliku JSON opisy encyklopedyczne oraz ewentualne ścieżki do
+        lokalnych miniatur fotograficznych obiektu.
+        """
         okno = tk.Toplevel(parent_window)
         okno.title("Katalog Obiektów Messiera")
-        okno.geometry("800x550")
+        okno.geometry("850x700")
         okno.transient(parent_window)
 
         baza_messiera = {}
@@ -344,31 +386,54 @@ class StartPanel(tk.Frame):
             dane = baza_messiera.get(wybrany, {})
 
             nazwa = dane.get("nazwa", "Brak nazwy w bazie")
-            opis = dane.get("opis", "Plik messier_katalog.json nie zawiera opisu dla tego obiektu.")
+            opis_baza = dane.get("opis", "Plik messier_katalog.json nie zawiera opisu.")
+
+            typ = dane.get("typ", "-")
+            rozmiary = dane.get("rozmiary", "-")
+            jasnosc = dane.get("jasnosc", "-")
+            gwiazdozbior = dane.get("gwiazdozbior", "-")
+            autor = dane.get("autor", "NASA, ESA")
             sciezka_zdjecia = dane.get("zdjecie", "")
+
+            # Dynamiczne składanie ostatecznego tekstu z osobnych kluczy JSON
+            opis_formatowany = f"{opis_baza}\n\nTyp: {typ}\nRozmiary pozorne: {rozmiary}\nJasność pozorna: {jasnosc}\nGwiazdozbiór: {gwiazdozbior}\nAutor: {autor}"
 
             lbl_tytul.config(text=f"{wybrany} - {nazwa}")
 
             txt_opis.config(state=tk.NORMAL)
             txt_opis.delete(1.0, tk.END)
-            txt_opis.insert(tk.END, opis)
+            txt_opis.insert(tk.END, opis_formatowany)
             txt_opis.config(state=tk.DISABLED)
 
             try:
                 if sciezka_zdjecia and os.path.exists(sciezka_zdjecia):
-                    img = tk.PhotoImage(file=sciezka_zdjecia)
-                    lbl_zdjecie.config(image=img, text="", width=0, height=0)
+                    if PILLOW_DOSTEPNY:
+                        # Otwieramy zdjęcie przez silnik Pillow
+                        img_pil = Image.open(sciezka_zdjecia)
+                        # Automatyczne skalowanie z zachowaniem proporcji do max 200x200
+                        img_pil.thumbnail((400, 400))
+                        # Konwersja na format zrozumiały dla Tkintera
+                        img = ImageTk.PhotoImage(img_pil)
+                    else:
+                        # Ratunkowy fallback bez skalowania, jeśli Pillow nie jest zainstalowane
+                        img = tk.PhotoImage(file=sciezka_zdjecia)
 
-                    # noinspection PyUnresolvedReferences
+                    lbl_zdjecie.config(image=img, text="", width=0, height=0)
                     lbl_zdjecie.image = img
                 else:
                     lbl_zdjecie.config(image="", text="[Zdjęcie niedostępne]", width=50, height=15)
-            except Exception:
-                lbl_zdjecie.config(image="", text="[Format nieobsługiwany - użyj .png lub .gif]", width=50, height=15)
+            except Exception as e:
+                lbl_zdjecie.config(image="", text=f"[Błąd ładowania obrazu]", width=50, height=15)
+                print(f"Błąd miniatury: {e}")
 
         lista.bind("<<ListboxSelect>>", on_select)
 
     def otworz_okno_dso(self):
+        """
+        Otwiera okno dialogowe wyboru obiektów do uwzględnienia w efemerydach.
+        Zawiera siatkę 110 checkboxów oraz skrypty automatycznego filtrowania
+        (według typu galaktyki lub widoczności z danej półkuli Ziemi).
+        """
         okno = tk.Toplevel(self)
         okno.title("Wybierz obiekty Messiera")
         okno.geometry("850x550")
@@ -479,6 +544,11 @@ class StartPanel(tk.Frame):
                                                                                  padx=(10, 0))
 
     def ustaw_punkt_z_mapy(self, coords):
+        """
+        Obsługuje zdarzenie kliknięcia Prawym Przyciskiem Myszy na mapie wektorowej.
+        Ustawia znacznik wizualny (Pin), uaktualnia bazę współrzędnych i odpytuje
+        bibliotekę timezonefinder w celu automatycznego wyznaczenia Strefy Czasowej (np. UTC+2)[cite: 12].
+        """
         lat, lon = coords
         if self.znacznik: self.znacznik.delete()
         self.znacznik = self.mapa.set_marker(lat, lon, text="Zaznaczone Miejsce")
@@ -492,9 +562,16 @@ class StartPanel(tk.Frame):
 
         strefa_str = self.tf.timezone_at(lat=lat, lng=lon)
         self.lbl_strefa.config(text=strefa_str if strefa_str else "UTC")
+
+        # Wywołanie zapytania do sieci API zlecane do pobocznego wątku (Daemon Thread).
+        # Unika to powieszenia całego okna w razie powolnego połączenia lub awarii API[cite: 12].
         threading.Thread(target=self.pobierz_wysokosc, args=(lat, lon), daemon=True).start()
 
     def pobierz_wysokosc(self, lat, lon):
+        """
+        Odpytuje otwarte publiczne API z zapytaniem o topograficzną wysokość n.p.m
+        dla konkretnego punktu geograficznego (część optymalizacji wątkowej)[cite: 12].
+        """
         try:
             r = requests.get(f"https://api.open-elevation.com/api/v1/lookup?locations={lat},{lon}", timeout=5)
             self.entry_elev.delete(0, tk.END)
@@ -505,6 +582,11 @@ class StartPanel(tk.Frame):
             self.entry_elev.insert(0, "100.0")
 
     def wczytaj_ustawienia(self):
+        """
+        Automatycznie ładuje profil użytkownika zmagazynowany w lokalnym pliku JSON.
+        Przywraca zapamiętane preferencje (Orby, Lokalizację, wybrane DSO) po
+        kolejnym włączeniu programu[cite: 12].
+        """
         if not os.path.exists("ustawienia.json"):
             return
         try:
@@ -548,6 +630,7 @@ class StartPanel(tk.Frame):
                 if "Trygon" in orby: wstaw_orb(self.orb_try, orby["Trygon"])
                 if "Opozycja" in orby: wstaw_orb(self.orb_opo, orby["Opozycja"])
 
+            # Cicha nawigacja na mapie do wczytanego punktu
             if "lat" in dane and "lon" in dane:
                 try:
                     lat_f, lon_f = float(dane["lat"]), float(dane["lon"])
@@ -561,6 +644,7 @@ class StartPanel(tk.Frame):
             print(f"Nie udało się wczytać ustawień: {e}")
 
     def zapisz_ustawienia(self):
+        """Zrzuca aktualny stan wizualnych formularzy do uporządkowanego pliku ustawienia.json[cite: 12]."""
         dane_do_zapisu = {
             "lat": self.entry_lat.get(),
             "lon": self.entry_lon.get(),
@@ -583,10 +667,17 @@ class StartPanel(tk.Frame):
             print(f"Nie udało się zapisać ustawień: {e}")
 
     def zbierz_i_wyslij(self):
+        """
+        Sygnał ześrodkowujący (emitowany po kliknięciu przycisku 'Generuj').
+        Funkcja parsowania: pobiera surowe teksty z okienek, sprawdza ich poprawność,
+        podmienia wadliwe zapisy na domyślne bezpieczne wartości ratunkowe (Fallback),
+        zapisuje sesję, a następnie przekazuje skompilowany słownik konfiguracyjny do Kontrolera (main.py)[cite: 12].
+        """
         try:
             aktywna_zakladka = self.notebook.index(self.notebook.select())
             tryb = "efemerydy" if aktywna_zakladka == 0 else "kosmogram"
 
+            # Wewnętrzne bezpieczniki (shielding) zapobiegające awariom od pustych pół lub tekstu ('invalid literal')
             def bezpieczny_float(val, domyslna):
                 try:
                     return float(str(val).replace(',', '.'))
@@ -646,6 +737,7 @@ class StartPanel(tk.Frame):
             }
 
             self.zapisz_ustawienia()
+            # Wysyłka bezpiecznego pakietu konfiguracyjnego do instancji GlownaAplikacja
             self.on_start_callback(konfiguracja)
 
         except Exception as e:
