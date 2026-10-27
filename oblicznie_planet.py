@@ -417,36 +417,40 @@ class EphemerisEngine:
                 elif prev_E < 270 and E >= 270:
                     zjawiska_jd.append((self._doprecyzuj_faze(jd - step, jd, 270), "Trzecia Kwadra", ""))
 
-            hist_D_moon.append((jd, D_moon));
-            hist_D_sun.append((jd, D_sun));
+            # --- NOWE WYNIKI W OPARCIU O OBLICZONE WARTOŚCI ---
+            hist_D_moon.append((jd, D_moon))
+            hist_D_sun.append((jd, D_sun))
             hist_Dec.append((jd, Dec))
+
             if len(hist_D_moon) == 3 and zjawiska_konf.get("ekstrema", True):
                 if hist_D_moon[1][1] < hist_D_moon[0][1] and hist_D_moon[1][1] < hist_D_moon[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, False, False)[0],
-                         "Perygeum Księżyca", ""))
+                    t_dok, min_dist = self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, False,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Perygeum Księżyca", f"{min_dist:,.0f} km".replace(',', ' ')))
                 elif hist_D_moon[1][1] > hist_D_moon[0][1] and hist_D_moon[1][1] > hist_D_moon[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, True, False)[0],
-                         "Apogeum Księżyca", ""))
+                    t_dok, max_dist = self._doprecyzuj_ekstremum(hist_D_moon[0][0], hist_D_moon[2][0], swe.MOON, True,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Apogeum Księżyca", f"{max_dist:,.0f} km".replace(',', ' ')))
+
                 if hist_D_sun[1][1] < hist_D_sun[0][1] and hist_D_sun[1][1] < hist_D_sun[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, False, False)[0],
-                         "Ziemia w peryhelium", ""))
+                    t_dok, min_dist = self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, False,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Ziemia w peryhelium", f"{min_dist:.4f} AU"))
                 elif hist_D_sun[1][1] > hist_D_sun[0][1] and hist_D_sun[1][1] > hist_D_sun[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, True, False)[0],
-                         "Ziemia w aphelium", ""))
+                    t_dok, max_dist = self._doprecyzuj_ekstremum(hist_D_sun[0][0], hist_D_sun[2][0], swe.SUN, True,
+                                                                 False)
+                    zjawiska_jd.append((t_dok, "Ziemia w aphelium", f"{max_dist:.4f} AU"))
+
                 if hist_Dec[1][1] < hist_Dec[0][1] and hist_Dec[1][1] < hist_Dec[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, False, True)[0],
-                         "Maks. deklinacja płd. Księżyca", ""))
+                    t_dok, min_dec = self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, False, True)
+                    zjawiska_jd.append((t_dok, "Księżyc: Maksymalna deklinacja S", f"{min_dec:.2f}°"))
                 elif hist_Dec[1][1] > hist_Dec[0][1] and hist_Dec[1][1] > hist_Dec[2][1]:
-                    zjawiska_jd.append(
-                        (self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, True, True)[0],
-                         "Maks. deklinacja płn. Księżyca", ""))
-                hist_D_moon.pop(0);
-                hist_D_sun.pop(0);
+                    t_dok, max_dec = self._doprecyzuj_ekstremum(hist_Dec[0][0], hist_Dec[2][0], swe.MOON, True, True)
+                    znak = "+" if max_dec > 0 else ""
+                    zjawiska_jd.append((t_dok, "Księżyc: Maksymalna deklinacja N", f"{znak}{max_dec:.2f}°"))
+
+                hist_D_moon.pop(0)
+                hist_D_sun.pop(0)
                 hist_Dec.pop(0)
 
             for p in planety_zewn + planety_wewn:
@@ -649,7 +653,7 @@ def generuj_raport(pozycja, rok, miesiac, dzien, days, strefa_str, krok_planety,
                             dec = engine.get_dso_declination(utc_time, dso)
                             if dec:
                                 w = z = "/\\" if (LATITUDE >= 0 and dec > 90 - LATITUDE) or (
-                                            LATITUDE < 0 and dec < -90 - LATITUDE) else "\\/"
+                                        LATITUDE < 0 and dec < -90 - LATITUDE) else "\\/"
                             else:
                                 w = z = "--:--"
                         wiersz_dso.append(f"{w or '--:--'}  {g}  {z or '--:--'}")

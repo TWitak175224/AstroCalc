@@ -217,6 +217,7 @@ class StartPanel(tk.Frame):
                   bg="#9C27B0", fg="white", font=("Helvetica", 9, "bold")).pack(fill=tk.X, padx=5, pady=(10, 5))
 
         self.mapa = tkintermapview.TkinterMapView(panel_prawy, corner_radius=5)
+        self.mapa.set_tile_server("https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", max_zoom=19)
         self.mapa.pack(fill=tk.BOTH, expand=True)
         self.mapa.set_zoom(6)
         self.mapa.set_position(52.0691, 19.4805)
